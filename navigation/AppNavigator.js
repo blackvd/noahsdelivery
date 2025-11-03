@@ -6,6 +6,7 @@ import OnboardingScreen from "../screens/OnboardingScreen";
 import { checkOnboardingStatus } from "../utils/storage";
 import SplashScreen from "../screens/SplashScreen";
 import { StyleSheet, View } from "react-native";
+import OTPScreen from "../screens/Auth/OTPScreen";
 
 const Stack = createStackNavigator();
 
@@ -50,6 +51,7 @@ const AppNavigator = () => {
       >
         <Stack.Screen name="Onboarding" component={OnboardingScreen}/>
         <Stack.Screen name="Auth" component={AuthScreen}/>
+        <Stack.Screen name="OTP" component={OTPScreen}/>
       </Stack.Navigator>
     </NavigationContainer>
   )

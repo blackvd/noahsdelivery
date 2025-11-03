@@ -25,9 +25,15 @@ const AuthScreen = ({ navigation }) => {
       userType,
       loginMethod,
       identifier,
-      password,
     });
     // Logique d'authentification
+
+    // Navigation vers l'écran OTP pour première connexion
+    navigation.navigate("OTP", {
+      identifier,
+      userType,
+      loginMethod,
+    });
   };
 
   const handleGoogleLogin = () => {
@@ -375,14 +381,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   bottomContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 24,
     paddingVertical: 16,
     elevation: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
