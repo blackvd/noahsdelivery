@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "godeliveryapp",
-    "slug": "godeliveryapp",
+    "name": "",
+    "slug": "noahdelivery",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/images/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
