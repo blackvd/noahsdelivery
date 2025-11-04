@@ -94,8 +94,16 @@ function OTPScreen({ navigation, route }) {
       userType,
     });
 
-    // Logique de vérification OTP
-    // navigation.replace('MainApp');
+    console.log(userType === 'client');
+
+    if(userType === 'client'){
+      // Logique de vérification OTP
+      // Si succès, navigation sans possibilité de retour
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'CustomerApp' }], // ou votre écran principal
+      });
+    }
   };
 
   const handleResend = () => {

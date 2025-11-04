@@ -1,12 +1,13 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import React, { useEffect, useState } from "react";
-import AuthScreen from "../screens/Auth/AuthScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import { checkOnboardingStatus } from "../utils/storage";
 import SplashScreen from "../screens/SplashScreen";
 import { StyleSheet, View } from "react-native";
-import OTPScreen from "../screens/Auth/OTPScreen";
+import AuthScreen from "../screens/auth/AuthScreen";
+import OTPScreen from "../screens/auth/OTPScreen";
+import MainTabNavigator from "../screens/app/customer/MainTabNavigator";
 
 const Stack = createStackNavigator();
 
@@ -52,6 +53,7 @@ const AppNavigator = () => {
         <Stack.Screen name="Onboarding" component={OnboardingScreen}/>
         <Stack.Screen name="Auth" component={AuthScreen}/>
         <Stack.Screen name="OTP" component={OTPScreen}/>
+        <Stack.Screen name="CustomerApp" component={MainTabNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   )
