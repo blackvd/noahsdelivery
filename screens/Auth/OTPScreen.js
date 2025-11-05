@@ -103,6 +103,11 @@ function OTPScreen({ navigation, route }) {
         index: 0,
         routes: [{ name: 'CustomerApp' }], // ou votre écran principal
       });
+    }else {
+      navigation.replace('DriverRegistration', {
+        identifier,
+        userType,
+      });
     }
   };
 

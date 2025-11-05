@@ -8,6 +8,13 @@ import { StyleSheet, View } from "react-native";
 import AuthScreen from "../screens/auth/AuthScreen";
 import OTPScreen from "../screens/auth/OTPScreen";
 import MainTabNavigator from "../screens/app/customer/MainTabNavigator";
+import DeliveryDetailsScreen from "../screens/app/customer/DeliveryDetailsScreen";
+import TrackingScreen from "../screens/app/customer/TrackingScreen";
+import RatingScreen from "../screens/app/customer/RatingScreen";
+import DeliveryHistoryDetailsScreen from "../screens/app/customer/DeliveryHistoryDetailsScreen";
+import DriverRegistrationScreen from "../screens/auth/DriverRegistrationScreen";
+import DriverHomeScreen from "../screens/app/driver/DriverHomeScreen";
+import DeliveryInProgressScreen from "../screens/app/driver/DeliveryInProgressScreen";
 
 const Stack = createStackNavigator();
 
@@ -54,6 +61,13 @@ const AppNavigator = () => {
         <Stack.Screen name="Auth" component={AuthScreen}/>
         <Stack.Screen name="OTP" component={OTPScreen}/>
         <Stack.Screen name="CustomerApp" component={MainTabNavigator} />
+        <Stack.Screen name="DeliveryDetails" component={DeliveryDetailsScreen} />
+        <Stack.Screen name="Tracking" component={TrackingScreen} />
+        <Stack.Screen name="Rating" component={RatingScreen} />
+        <Stack.Screen name="DeliveryHistoryDetails" component={DeliveryHistoryDetailsScreen} />
+        <Stack.Screen name="DriverRegistration" component={DriverRegistrationScreen} />
+        <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
+        <Stack.Screen name="DeliveryInProgress" component={DeliveryInProgressScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   )
