@@ -75,7 +75,7 @@ const AuthScreen = ({ navigation }) => {
               <Ionicons
                 name="person"
                 size={24}
-                color={userType === "client" ? "#E53935" : "#9ca3af"}
+                color={userType === "client" ? "#ef4444" : "#9ca3af"}
               />
               <Text
                 style={[
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   userTypeButtonActive: {
-    borderColor: "#E53935",
+    borderColor: "#ef4444",
     backgroundColor: "#e539353f",
   },
   userTypeText: {
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     color: "#6b7280",
   },
   userTypeTextActive: {
-    color: "#E53935",
+    color: "#ef4444",
   },
   loginMethodContainer: {
     flexDirection: "row",
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   loginMethodButtonActive: {
-    backgroundColor: "#E53935",
+    backgroundColor: "#ef4444",
   },
   loginMethodText: {
     fontSize: 14,
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: "#E53935",
+    color: "#ef4444",
     fontWeight: "600",
   },
   bottomContainer: {
@@ -394,12 +394,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   loginButton: {
-    backgroundColor: "#E53935",
+    backgroundColor: "#ef4444",
     paddingVertical: 18,
     borderRadius: 12,
     alignItems: "center",
     elevation: 3,
-    shadowColor: "#E53935",
+    shadowColor: "#ef4444",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     fontSize: 15,
-    color: "#E53935",
+    color: "#ef4444",
     fontWeight: "700",
   },
 });

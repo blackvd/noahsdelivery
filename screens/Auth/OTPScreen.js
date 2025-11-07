@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 function OTPScreen({ navigation, route }) {
   const { identifier, userType, loginMethod } = route.params || {};
@@ -150,7 +150,7 @@ function OTPScreen({ navigation, route }) {
 
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="mail-open" size={60} color="#E53935" />
+          <Ionicons name="mail-open" size={60} color="#ef4444" />
         </View>
 
         {/* Titre et description */}
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   identifier: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#E53935",
+    color: "#ef4444",
     marginBottom: 40,
   },
   otpContainer: {
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9fafb",
   },
   otpInputFilled: {
-    borderColor: "#E53935",
+    borderColor: "#ef4444",
     backgroundColor: "#e539353f",
   },
   resendContainer: {
@@ -305,12 +305,12 @@ const styles = StyleSheet.create({
   },
   timerValue: {
     fontWeight: "700",
-    color: "#E53935",
+    color: "#ef4444",
   },
   resendText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#E53935",
+    color: "#ef4444",
   },
   helpContainer: {
     flexDirection: "row",
@@ -335,12 +335,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   verifyButton: {
-    backgroundColor: "#E53935",
+    backgroundColor: "#ef4444",
     paddingVertical: 18,
     borderRadius: 12,
     alignItems: "center",
     elevation: 3,
-    shadowColor: "#E53935",
+    shadowColor: "#ef4444",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
