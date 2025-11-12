@@ -1,9 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import * as Contacts from 'expo-contacts';
+import * as Location from 'expo-location';
 import MapView, { Marker } from "react-native-maps";
 
 const { width } = Dimensions.get("window");
@@ -21,20 +25,39 @@ const { width } = Dimensions.get("window");
 function HomeScreen({ navigation }) {
   const [selectedSize, setSelectedSize] = useState("small");
   const [selectedMode, setSelectedMode] = useState("motorbike");
-  const [pickupAddress, setPickupAddress] = useState("");
-  const [dropoffAddress, setDropoffAddress] = useState("");
+  const [pickupAddress, setPickupAddress] = useState({
+    name: '',
+    addressText: '',
+    latitude: null,
+    longitude: null,
+  });
+  const [dropoffAddress, setDropoffAddress] = useState({
+    name: '',
+    addressText: '',
+    latitude: null,
+    longitude: null,
+  });
   const [recipientPhone, setRecipientPhone] = useState('');
   const [remarks, setRemarks] = useState('');
+
   const [showContactsModal, setShowContactsModal] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingContacts, setLoadingContacts] = useState(false);
 
+  // États pour la localisation
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationField, setLocationField] = useState(''); // 'pickup' ou 'dropoff'
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState(null);
+
   const packageSizes = [
-    { id: "small", label: "Petit", icon: "📦" },
-    { id: "medium", label: "Moyen", icon: "📦" },
-    { id: "large", label: "Large", icon: "📦" },
+    { id: "SMALL", label: "Petit", icon: "📦" },
+    { id: "MEDUIM", label: "Moyen", icon: "📦" },
+    { id: "LARGE", label: "Large", icon: "📦" },
   ];
 
   const deliveryModes = [
@@ -139,6 +162,254 @@ function HomeScreen({ navigation }) {
     setSearchQuery('');
   };
 
+  // ============= GESTION DE LA LOCALISATION =============
+  
+  // Obtenir la position actuelle
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission refusée',
+          'Pour utiliser votre position actuelle, autorisez l\'accès à la localisation'
+        );
+        return null;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      return {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+    } catch (error) {
+      console.error('Erreur localisation:', error);
+      return null;
+    }
+  };
+
+  // Géocoder la position actuelle
+  const reverseGeocode = async (coords) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?` +
+        `lat=${coords.latitude}` +
+        `&lon=${coords.longitude}` +
+        `&format=json` +
+        `&addressdetails=1` +
+        `&accept-language=fr`;
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'YabaExpress/1.0',
+        },
+      });
+
+      const data = await response.json();
+
+      if (data && data.display_name) {
+        return {
+          id: 'current-location',
+          name: 'Ma position actuelle',
+          addressText: data.display_name,
+          subtitle: formatAddress(data.address),
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          address: data.address,
+          isCurrentLocation: true,
+        };
+      }
+
+      // const results = await Location.reverseGeocodeAsync(coords);
+      // if (results && results.length > 0) {
+      //   const address = results[0];
+      //   const formatted = [
+      //     address.name,
+      //     address.street,
+      //     address.city,
+      //     address.region,
+      //   ].filter(Boolean).join(', ');
+        
+      //   return formatted || 'Position actuelle';
+      // }
+      // return 'Position actuelle';
+    } catch (error) {
+      console.error('Erreur reverse geocode:', error);
+      return 'Position actuelle';
+    }
+  };
+
+  // Formater l'adresse de manière lisible
+  const formatAddress = (address) => {
+    if (!address) return '';
+    
+    const parts = [];
+    
+    if (address.road) parts.push(address.road);
+    if (address.suburb) parts.push(address.suburb);
+    if (address.city || address.town || address.village) {
+      parts.push(address.city || address.town || address.village);
+    }
+    
+    return parts.join(', ') || address.display_name || '';
+  };
+
+  // Extraire un nom court pour le lieu
+  const extractLocationName = (place) => {
+    const address = place.address;
+    
+    // Priorité: nom du lieu > route > quartier > ville
+    if (place.name && place.name !== place.display_name) {
+      return place.name;
+    }
+    if (address.road) return address.road;
+    if (address.suburb) return address.suburb;
+    if (address.neighbourhood) return address.neighbourhood;
+    if (address.village) return address.village;
+    if (address.town) return address.town;
+    if (address.city) return address.city;
+    
+    return 'Lieu sélectionné';
+  };
+
+  // Rechercher des lieux avec l'API Google Places
+  const searchPlaces = async (query) => {
+    if (!query || query.trim().length < 3) {
+      setLocationSuggestions([]);
+      return;
+    }
+
+    setLoadingLocations(true);
+    try {
+      // Définir les limites pour Abidjan et la Côte d'Ivoire
+      const viewbox = '-5.5,-4.0,4.5,10.5'; // Côte d'Ivoire approximative
+      const bounded = 1; // Limiter aux résultats dans le viewbox
+
+      const url = `https://nominatim.openstreetmap.org/search?` +
+        `q=${encodeURIComponent(query)}` +
+        `&format=json` +
+        `&addressdetails=1` +
+        `&limit=10` +
+        `&countrycodes=ci` + // Côte d'Ivoire
+        `&viewbox=${viewbox}` +
+        `&bounded=${bounded}` +
+        `&accept-language=fr`;
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'YabaExpress/1.0', // Nominatim requiert un User-Agent
+        },
+      });
+
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const suggestions = data.map((place, index) => ({
+          id: `place-${index}`,
+          name: extractLocationName(place),
+          addressText: place.display_name,
+          subtitle: formatAddress(place.address),
+          latitude: parseFloat(place.lat),
+          longitude: parseFloat(place.lon),
+          address: place.address,
+          isCurrentLocation: false,
+        }));
+
+        setLocationSuggestions(suggestions);
+      } else {
+        setLocationSuggestions([]);
+      }
+
+      // const GOOGLE_PLACES_API_KEY = 'VOTRE_CLE_API_GOOGLE'; // À remplacer
+      
+      // // Si vous n'avez pas de clé API, utilisez expo-location geocoding
+      // const results = await Location.geocodeAsync(query);
+      
+      // if (results && results.length > 0) {
+      //   const suggestions = results.slice(0, 5).map((result, index) => ({
+      //     id: `${result.latitude}-${result.longitude}-${index}`,
+      //     description: query,
+      //     latitude: result.latitude,
+      //     longitude: result.longitude,
+      //   }));
+        
+      //   setLocationSuggestions(suggestions);
+      // } else {
+      //   setLocationSuggestions([]);
+      // }
+    } catch (error) {
+      console.error('Erreur recherche lieux:', error);
+      setLocationSuggestions([]);
+    } finally {
+      setLoadingLocations(false);
+    }
+  };
+
+  // Ouvrir le modal de localisation
+  const handleOpenLocationModal = async (field) => {
+    setLocationField(field);
+    setShowLocationModal(true);
+    setLocationSearchQuery('');
+    setLocationSuggestions([]);
+    
+    // Charger la position actuelle
+    const coords = await getCurrentLocation();
+    if (coords) {
+      const currentPlace = await reverseGeocode(coords);
+      if (currentPlace) {
+        setLocationSuggestions([currentPlace]);
+      }
+    }
+  };
+
+  // Recherche de lieux avec debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (locationSearchQuery.trim().length >= 3) {
+        searchPlaces(locationSearchQuery);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [locationSearchQuery]);
+
+  // Sélectionner un lieu
+  const handleSelectLocation = (location) => {
+    const locationData = {
+      name: location.name,
+      addressText: location.addressText,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+
+    if (locationField === 'pickupAddress') {
+      setPickupAddress(locationData);
+      console.log('Pickup Data:', locationData);
+    } else if (locationField === 'dropoffAddress') {
+      setDropoffAddress(locationData);
+      console.log('Dropoff Data:', locationData);
+    }
+    
+    setShowLocationModal(false);
+    setLocationSearchQuery('');
+    setLocationSuggestions([]);
+  };
+
+  // Utiliser la position actuelle
+  const handleUseCurrentLocation = async () => {
+    if (currentLocation) {
+      const address = await reverseGeocode(currentLocation);
+      handleSelectLocation({
+        description: address,
+        ...currentLocation,
+      });
+    } else {
+      Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
+    }
+  };
+
   const handleRequestDelivery = () => {
     console.log({
       pickup: pickupAddress,
@@ -151,7 +422,6 @@ function HomeScreen({ navigation }) {
     // Navigation vers l'écran de confirmation
 
     navigation.navigate("DeliveryDetails", {
-      id: "DEL1032453245",
       pickup: pickupAddress,
       dropoff: dropoffAddress,
       size: selectedSize,
@@ -195,8 +465,8 @@ function HomeScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* Map qui déborde - Positionnée avec margin négatif */}
-        <View style={styles.mapWrapper}>
-          <View style={styles.mapContainer}>
+        {/* <View style={styles.mapWrapper}>
+          <View style={styles.mapContainer}> */}
             {/* <View style={styles.mapPlaceholder}>
               <View style={styles.driversNearby}>
                 <View style={styles.greenDot} />
@@ -216,7 +486,7 @@ function HomeScreen({ navigation }) {
             </View> */}
 
             {/* Vrai Map remplacer lors des tests en live */}
-            <MapView
+            {/* <MapView
                 style={styles.mapPlaceholder}
                 initialRegion={{
             latitude: 5.3350,
@@ -232,37 +502,39 @@ function HomeScreen({ navigation }) {
                 </Marker>
               </MapView>
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.formContainer}>
           <Text style={styles.formTitle}>Demander une livraison</Text>
 
           <View style={styles.inputSection}>
             <Text style={styles.label}>Point de collecte</Text>
-            <View style={styles.inputContainer}>
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => handleOpenLocationModal('pickupAddress')}
+              activeOpacity={0.7}>
               <Ionicons name="location" size={24} color="#ef4444" />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter pickup address"
-                placeholderTextColor="#9ca3af"
-                value={pickupAddress}
-                onChangeText={setPickupAddress}
-              />
-            </View>
+              <Text
+                style={[styles.input, !pickupAddress && styles.inputPlaceholder]}
+              >
+              {pickupAddress.name || 'Point de collecte'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputSection}>
             <Text style={styles.label}>Point de livraison</Text>
-            <View style={styles.inputContainer}>
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => handleOpenLocationModal('dropoffAddress')}
+              activeOpacity={0.7}>
               <Ionicons name="location-outline" size={24} color="#9ca3af" />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter destination"
-                placeholderTextColor="#9ca3af"
-                value={dropoffAddress}
-                onChangeText={setDropoffAddress}
-              />
-            </View>
+              <Text
+                style={[styles.input, !dropoffAddress && styles.inputPlaceholder]}
+              >
+                {dropoffAddress.name || 'Point de livraison'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputSection}>
@@ -467,6 +739,103 @@ function HomeScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Modal Localisation */}
+      <Modal
+        visible={showLocationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.contactsModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {locationField === 'pickup' ? 'Point de collecte' : 'Point de livraison'}
+              </Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  setShowLocationModal(false);
+                  setLocationSearchQuery('');
+                }}
+              >
+                <Ionicons name="close" size={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#9ca3af" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher une adresse..."
+                placeholderTextColor="#9ca3af"
+                value={locationSearchQuery}
+                onChangeText={setLocationSearchQuery}
+                autoFocus
+              />
+              {locationSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setLocationSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color="#9ca3af" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {loadingLocations ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#f97316" />
+                <Text style={styles.loadingText}>Recherche en cours...</Text>
+              </View>
+            ) : locationSuggestions.length === 0 && locationSearchQuery.length >= 3 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="location-outline" size={64} color="#d1d5db" />
+                <Text style={styles.emptyText}>Aucun lieu trouvé</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={locationSuggestions}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.locationItem}
+                    onPress={() => handleSelectLocation(item)}
+                  >
+                    <View style={[
+                      styles.locationIcon,
+                      item.isCurrentLocation && styles.currentLocationIcon,
+                    ]}>
+                      <Ionicons 
+                        name={item.isCurrentLocation ? "navigate" : "location"} 
+                        size={20} 
+                        color={item.isCurrentLocation ? "#10b981" : "#f97316"} 
+                      />
+                    </View>
+                    <View style={styles.locationInfo}>
+                      <Text style={styles.locationDescription}>{item.description}</Text>
+                      {item.subtitle && (
+                        <Text style={styles.locationSubtitle}>{item.subtitle}</Text>
+                      )}
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
+                  </TouchableOpacity>
+                )}
+                showsVerticalScrollIndicator={false}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ListEmptyComponent={
+                  locationSearchQuery.length < 3 ? (
+                    <View style={styles.emptyContainer}>
+                      <Ionicons name="location-outline" size={64} color="#d1d5db" />
+                      <Text style={styles.emptyText}>
+                        Tapez au moins 3 caractères pour rechercher
+                      </Text>
+                    </View>
+                  ) : null
+                }
+              />
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaProvider>
   );
 }
@@ -656,6 +1025,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#111827",
+  },
+  inputPlaceholder: {
+    color: '#9ca3af',
   },
   contactsButton: {
     width: 30,
@@ -888,6 +1260,38 @@ const styles = StyleSheet.create({
   contactPhone: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  locationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  locationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff5f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  currentLocationIcon: {
+    backgroundColor: '#d1fae5',
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationDescription: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 2,
+  },
+  locationSubtitle: {
+    fontSize: 13,
+    color: '#10b981',
+    fontWeight: '600',
   },
   separator: {
     height: 1,
