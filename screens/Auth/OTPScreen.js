@@ -107,7 +107,7 @@ function OTPScreen({ navigation, route }) {
       var response = await verifyOtp(identifier, loginMethod, otpCode);
       console.log(response);
 
-      if (userType === "CLIENT") {
+      if (response !== "") {
         authCtx.authenticate(response, userType);
       } else {
         naviguate.replace("DriverRegistration", {

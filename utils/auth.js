@@ -30,7 +30,12 @@ export async function verifyOtp(identifier, loginMethod, code) {
 
 export async function registerCourier(courierData) {
   const response = await axios.post(`${BASE_URL}/register/courier`, {
-    courierData,
+    firstName: courierData.firstName,
+    lastName: courierData.lastName,
+    idCardFront: courierData.idCardFront,
+    idCardBack: courierData.idCardBack,
+    driverLicenseCardFront: courierData.licenseFront,
+    driverLicenseCardBack: courierData.licenseBack,
   });
 
   return response.data.accessToken

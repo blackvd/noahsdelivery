@@ -15,8 +15,11 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { registerCourier } from "../../utils/auth";
+import { AuthContext } from "../../store/context/auth-context";
 
 const DriverRegistrationScreen = ({ navigation, route }) => {
+  const authCtx = useContext(AuthContext);
   const { phone } = route.params || {};
 
   const [formData, setFormData] = useState({
@@ -157,39 +160,41 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
   };
 
   const handleSubmit = async () => {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "DriverHome" }], // ou votre écran principal
-    });
-    // if (!validateForm()) return;
+    // navigation.reset({
+    //   index: 0,
+    //   routes: [{ name: "DriverHome" }], // ou votre écran principal
+    // });
+    if (!validateForm()) return;
 
-    // setLoading(true);
+    setLoading(true);
 
-    // try {
-    //   // Simuler l'upload et l'inscription
-    //   await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Simuler l'upload et l'inscription
+      // await new Promise(resolve => setTimeout(resolve, 2000));
 
-    //   // TODO: Implémenter l'API d'inscription livreur
-    //   console.log('Driver Registration Data:', {
-    //     phone,
-    //     ...formData,
-    //   });
+      // TODO: Implémenter l'API d'inscription livreur
+      // console.log('Driver Registration Data:', {
+      //   phone,
+      //   ...formData,
+      // });
 
-    //   Alert.alert(
-    //     'Inscription réussie',
-    //     'Votre demande a été soumise. Vous recevrez une notification une fois votre compte validé.',
-    //     [
-    //       {
-    //         text: 'OK',
-    //         onPress: () => navigation.navigate('Auth'),
-    //       },
-    //     ]
-    //   );
-    // } catch (error) {
-    //   Alert.alert('Erreur', 'Une erreur est survenue lors de l\'inscription');
-    // } finally {
-    //   setLoading(false);
-    // }
+      const response = await registerCourier(formData)
+      authCtx.authenticate(response, 'LIVREUR');
+
+      // Alert.alert(
+      //   'Inscription réussie',
+      //   'Votre demande a été soumise. Vous recevrez une notification une fois votre compte validé.',
+      //   [
+      //     {
+      //       text: 'OK',
+      //       onPress: () => navigation.navigate('Auth'),
+      //     },
+      //   ]
+      // );
+    } catch (error) {
+      Alert.alert('Erreur', 'Une erreur est survenue lors de l\'inscription');
+      setLoading(false);
+    }
   };
 
   const renderImageUpload = (field, label, icon) => {
