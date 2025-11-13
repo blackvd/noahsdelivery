@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { verifyOtp } from "../../utils/auth";
+import { AuthContext } from "../../store/context/auth-context";
 
 function OTPScreen({ navigation, route }) {
   const { identifier, userType, loginMethod } = route.params || {};
@@ -19,6 +21,8 @@ function OTPScreen({ navigation, route }) {
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef([]);
+
+  const authCtx = useContext(AuthContext)
 
   useEffect(() => {
     let interval;
@@ -80,7 +84,7 @@ function OTPScreen({ navigation, route }) {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const otpCode = otp.join("");
 
     if (otpCode.length !== 6) {
@@ -94,17 +98,22 @@ function OTPScreen({ navigation, route }) {
       userType,
     });
 
-    console.log(userType === 'client');
+    try {
+      var response = await verifyOtp(identifier, loginMethod, otpCode);
+      authCtx.authenticate(response)
+    } catch (error) {
+      console.log("Demande de OTP échoué");
+    }
 
-    if(userType === 'client'){
+    if (userType === "CLIENT") {
       // Logique de vérification OTP
       // Si succès, navigation sans possibilité de retour
       navigation.reset({
         index: 0,
-        routes: [{ name: 'CustomerApp' }], // ou votre écran principal
+        routes: [{ name: "CustomerApp" }], // ou votre écran principal
       });
-    }else {
-      navigation.replace('DriverRegistration', {
+    } else {
+      navigation.replace("DriverRegistration", {
         identifier,
         userType,
       });
@@ -165,10 +174,7 @@ function OTPScreen({ navigation, route }) {
             <TextInput
               key={index}
               ref={(ref) => (inputRefs.current[index] = ref)}
-              style={[
-                styles.otpInput,
-                digit && styles.otpInputFilled,
-              ]}
+              style={[styles.otpInput, digit && styles.otpInputFilled]}
               value={digit}
               onChangeText={(value) => handleOtpChange(value, index)}
               onKeyPress={(e) => handleKeyPress(e, index)}
@@ -187,20 +193,22 @@ function OTPScreen({ navigation, route }) {
         <View style={styles.resendContainer}>
           {!canResend ? (
             <Text style={styles.timerText}>
-              Renvoyer le code dans{' '}
+              Renvoyer le code dans{" "}
               <Text style={styles.timerValue}>{formatTime(timer)}</Text>
             </Text>
           ) : (
             <TouchableOpacity onPress={handleResend}>
-              <Text style={styles.resendText}>
-                Renvoyer le code
-              </Text>
+              <Text style={styles.resendText}>Renvoyer le code</Text>
             </TouchableOpacity>
           )}
         </View>
 
         <View style={styles.helpContainer}>
-          <Ionicons name="information-circle-outline" size={18} color="#6b7280" />
+          <Ionicons
+            name="information-circle-outline"
+            size={18}
+            color="#6b7280"
+          />
           <Text style={styles.helpText}>
             Le code est valable pendant 10 minutes
           </Text>
@@ -211,11 +219,11 @@ function OTPScreen({ navigation, route }) {
         <TouchableOpacity
           style={[
             styles.verifyButton,
-            otp.every(digit => digit === '') && styles.verifyButtonDisabled,
+            otp.every((digit) => digit === "") && styles.verifyButtonDisabled,
           ]}
           onPress={handleVerify}
           activeOpacity={0.8}
-          disabled={otp.every(digit => digit === '')}
+          disabled={otp.every((digit) => digit === "")}
         >
           <Text style={styles.verifyButtonText}>Vérifier</Text>
         </TouchableOpacity>

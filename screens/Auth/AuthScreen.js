@@ -1,9 +1,9 @@
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -12,21 +12,35 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { requestOtp } from "../../utils/auth";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const AuthScreen = ({ navigation }) => {
-  const [userType, setUserType] = useState("client"); // 'client' ou 'livreur'
+  const [userType, setUserType] = useState("CLIENT"); // 'client' ou 'livreur'
   const [loginMethod, setLoginMethod] = useState("email"); // 'email' ou 'phone'
   const [identifier, setIdentifier] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     console.log("Connexion:", {
       userType,
       loginMethod,
       identifier,
     });
     // Logique d'authentification
+
+    if(!identifier) {
+      Alert.alert('Champs requis', 'Prière fournir un numéro de téléphone ou une adresse mail')
+    }
+
+    setIsAuthenticating(true)
+
+    const response = await requestOtp(identifier, loginMethod, userType)
+    console.log(response);
+
+    setIsAuthenticating(false)
 
     // Navigation vers l'écran OTP pour première connexion
     navigation.navigate("OTP", {
@@ -45,6 +59,10 @@ const AuthScreen = ({ navigation }) => {
     console.log("Connexion Facebook");
     // Logique Facebook Login
   };
+
+  // if(isAuthenticating){
+  //   return <LoadingOverlay/>
+  // }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -68,19 +86,19 @@ const AuthScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.userTypeButton,
-                userType === "client" && styles.userTypeButtonActive,
+                userType === "CLIENT" && styles.userTypeButtonActive,
               ]}
-              onPress={() => setUserType("client")}
+              onPress={() => setUserType("CLIENT")}
             >
               <Ionicons
                 name="person"
                 size={24}
-                color={userType === "client" ? "#ef4444" : "#9ca3af"}
+                color={userType === "CLIENT" ? "#ef4444" : "#9ca3af"}
               />
               <Text
                 style={[
                   styles.userTypeText,
-                  userType === "client" && styles.userTypeTextActive,
+                  userType === "CLIENT" && styles.userTypeTextActive,
                 ]}
               >
                 Client
@@ -90,19 +108,19 @@ const AuthScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.userTypeButton,
-                userType === "livreur" && styles.userTypeButtonActive,
+                userType === "LIVREUR" && styles.userTypeButtonActive,
               ]}
-              onPress={() => setUserType("livreur")}
+              onPress={() => setUserType("LIVREUR")}
             >
               <Ionicons
                 name="bicycle"
                 size={24}
-                color={userType === "livreur" ? "#E53935" : "#9ca3af"}
+                color={userType === "LIVREUR" ? "#E53935" : "#9ca3af"}
               />
               <Text
                 style={[
                   styles.userTypeText,
-                  userType === "livreur" && styles.userTypeTextActive,
+                  userType === "LIVREUR" && styles.userTypeTextActive,
                 ]}
               >
                 Livreur
