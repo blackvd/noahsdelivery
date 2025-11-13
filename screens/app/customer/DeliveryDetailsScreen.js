@@ -87,7 +87,7 @@ function DeliveryDetailsScreen({ navigation, route }) {
   //   total: 1653,
   // };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     console.log("Delivery confirmed with:", {
       ...deliveryData,
       payment: selectedPayment,
@@ -103,7 +103,13 @@ function DeliveryDetailsScreen({ navigation, route }) {
     setIsLoading(true);
 
     try {
-      const response = createDelivery(deliveryRequest, authCtx.token);
+      const response = await createDelivery(deliveryRequest, authCtx.token);
+
+      // Navigation vers l'écran de tracking ou confirmation
+      //navigation.navigate('TrackingScreen');
+      setIsLoading(false);
+
+      navigation.navigate("Tracking", {id: response.id});
     } catch (error) {
       Alert.alert(
         "Réquête non crée",
@@ -111,15 +117,6 @@ function DeliveryDetailsScreen({ navigation, route }) {
       );
       setIsLoading(false);
     }
-
-    // Navigation vers l'écran de tracking ou confirmation
-    // navigation.navigate('TrackingScreen');
-
-    // navigation.navigate("Tracking", {
-    //   ...deliveryData,
-    //   payment: selectedPayment,
-    //   price: priceBreakdown.total,
-    // });
   };
 
   return (

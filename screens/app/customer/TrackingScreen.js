@@ -1,5 +1,5 @@
 // src/screens/TrackingScreen.js
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import {
   View,
   Text,
@@ -16,11 +16,16 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { findDelivery } from '../../../utils/delivery';
+import { AuthContext } from '../../../store/context/auth-context';
+import { socket } from '../../../utils/socket';
 
 const { width, height } = Dimensions.get('window');
 
 const TrackingScreen = ({ navigation, route }) => {
-  const delivery = route.params?.delivery || {
+  //const delivery = route.params?.delivery || {
+  //const delivery = ;
+  const [delivery, setDelivery] = useState({
     orderId: 'DEL176226280090',
     pickup: 'hdh',
     dropoff: 'jsj',
@@ -28,8 +33,8 @@ const TrackingScreen = ({ navigation, route }) => {
     distance: '8.5 km',
     size: 'small',
     vehicle: 'motorbike',
-  };
-
+  })
+  const [deliveryData, setDeliveryData] = useState(null)
   const [currentStage, setCurrentStage] = useState(0);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -123,6 +128,30 @@ const TrackingScreen = ({ navigation, route }) => {
     dropoff: { latitude: 5.3167747, longitude: -4.0161046 },
   };
 
+  const authCtx = useContext(AuthContext);
+
+  useEffect(() => {
+    const loadDelivery = async () => {
+      try{
+        const response = await findDelivery(route.params.id, authCtx.token)
+        console.log("Response API :", response);
+        setDeliveryData(response)
+      }catch(error) {
+        console.log("Erreur lors du chargement :", error);
+      }
+    }
+
+    if (route.params?.id) {
+      loadDelivery();
+    }
+  }, [route.params?.id])
+
+  useEffect(() => {
+    if(deliveryData) {
+      setDelivery(prev => ({...prev, orderId: deliveryData.id, size: deliveryData.packageSize, vehicle: deliveryData.deliveryType, price: `${deliveryData.estimatedPrice} F`, pickup: deliveryData.addressDeliveries.find(addr => addr.type === "PICKUP").name, dropoff: deliveryData.addressDeliveries.find(addr => addr.type === "DROPOFF").name}))
+    }
+  }, [deliveryData])
+
   // Nettoyer les intervalles au démontage
   useEffect(() => {
     return () => {
@@ -134,21 +163,41 @@ const TrackingScreen = ({ navigation, route }) => {
 
   // Simulation automatique
   useEffect(() => {
-    const intervals = [4000, 6000, 5000, 6000];
+    // const intervals = [4000, 6000, 5000, 6000];
 
-    let timeoutId;
-    if (currentStage < 4) {
-      timeoutId = setTimeout(() => {
-        setCurrentStage(prev => prev + 1);
-      }, intervals[currentStage]);
-    } else if (currentStage === 4) {
-      setTimeout(() => {
-        setShowCompletionModal(true);
-      }, 1000);
-    }
+    // let timeoutId;
+    // if (currentStage < 4) {
+    //   timeoutId = setTimeout(() => {
+    //     setCurrentStage(prev => prev + 1);
+    //   }, intervals[currentStage]);
+    // } else if (currentStage === 4) {
+    //   setTimeout(() => {
+    //     setShowCompletionModal(true);
+    //   }, 1000000);
+    // }
+    const status = ['PENDING','ASSIGNED','PICKEDUP','IN_PROGRESS','DELIVERED','CANCELLED']
 
-    return () => clearTimeout(timeoutId);
-  }, [currentStage]);
+    socket.on('deliveryStatusUpdated', data => {
+      console.log('tracking status', deliveryData, delivery);
+      console.log(data.deliveryId);
+      console.log(data.deliveryId === deliveryData.id);
+      if(data.deliveryId === deliveryData.id){
+        const stage = status.indexOf(data.status)
+        console.log(stage);
+        if(stage < 4) {
+          setCurrentStage(prev => prev = stage)
+        }else {
+          setShowCompletionModal(true)
+        }
+      }
+    })
+
+    return () => {
+      socket.off("deliveryStatusUpdated");
+    };
+
+    //return () => clearTimeout(timeoutId);
+  }, [deliveryData, delivery]);
 
   // Animation position livreur
   useEffect(() => {

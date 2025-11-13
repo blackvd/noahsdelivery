@@ -46,7 +46,14 @@ export async function createDelivery(deliveryData, authToken) {
     estimatedPrice: deliveryData.price,
   }, {headers: {'Authorization': `Bearer ${authToken}`}});
 
-  console.log("CREATE DELIVERY RESPONSE", response.data);
+  return response.data
+}
+
+export async function findDelivery(id, authToken) {
+  console.log(`${BASE_URL}/${id}`);
+  const response = await axios.get(`${BASE_URL}/${id}`, {headers: {'Authorization': `Bearer ${authToken}`}})
+
+  console.log("DELIVERY FOUND",response.data);
 
   return response.data
 }
