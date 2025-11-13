@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useContext, useEffect, useState } from "react";
+import { use, useContext, useEffect, useState } from "react";
 import {
+  Alert,
   Dimensions,
   ScrollView,
   StatusBar,
@@ -11,7 +12,8 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../../store/context/auth-context";
-import { computePrice } from "../../../utils/delivery";
+import { computePrice, createDelivery } from "../../../utils/delivery";
+import ThreeDotsLoader from "../../../components/ThreeDotsLoader";
 
 const { width } = Dimensions.get("window");
 
@@ -23,6 +25,7 @@ function DeliveryDetailsScreen({ navigation, route }) {
     serviceFee: 0,
     total: 0,
   });
+  const [isLoading, setIsLoading] = useState(false);
   const authCtx = useContext(AuthContext);
 
   const deliveryData = route?.params;
@@ -90,14 +93,33 @@ function DeliveryDetailsScreen({ navigation, route }) {
       payment: selectedPayment,
       price: priceBreakdown.total,
     });
-    // Navigation vers l'écran de tracking ou confirmation
-    // navigation.navigate('TrackingScreen');
 
-    navigation.navigate("Tracking", {
+    const deliveryRequest = {
       ...deliveryData,
       payment: selectedPayment,
       price: priceBreakdown.total,
-    });
+    };
+
+    setIsLoading(true);
+
+    try {
+      const response = createDelivery(deliveryRequest, authCtx.token);
+    } catch (error) {
+      Alert.alert(
+        "Réquête non crée",
+        "Impossible de faire la demande de livraison"
+      );
+      setIsLoading(false);
+    }
+
+    // Navigation vers l'écran de tracking ou confirmation
+    // navigation.navigate('TrackingScreen');
+
+    // navigation.navigate("Tracking", {
+    //   ...deliveryData,
+    //   payment: selectedPayment,
+    //   price: priceBreakdown.total,
+    // });
   };
 
   return (
@@ -272,9 +294,13 @@ function DeliveryDetailsScreen({ navigation, route }) {
           onPress={handleConfirm}
           activeOpacity={0.8}
         >
-          <Text style={styles.confirmButtonText}>
-            Confirmer et demander la livraison
-          </Text>
+          {isLoading ? (
+            <ThreeDotsLoader color="#fff" size={10} />
+          ) : (
+            <Text style={styles.confirmButtonText}>
+              Confirmer et demander la livraison
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaProvider>

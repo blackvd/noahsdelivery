@@ -17,37 +17,38 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import * as Contacts from 'expo-contacts';
-import * as Location from 'expo-location';
+import * as Contacts from "expo-contacts";
+import * as Location from "expo-location";
 import MapView, { Marker } from "react-native-maps";
+import ThreeDotsLoader from "../../../components/ThreeDotsLoader";
 
 const { width } = Dimensions.get("window");
 
 function HomeScreen({ navigation }) {
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedSize, setSelectedSize] = useState("small");
-  const [selectedMode, setSelectedMode] = useState("motorbike");
+  const [selectedMode, setSelectedMode] = useState("MOTO");
   const [pickupAddress, setPickupAddress] = useState({
-    name: '',
-    addressText: '',
+    name: "",
+    addressText: "",
     latitude: null,
     longitude: null,
-    phone: '',
+    phone: "",
   });
   const [dropoffAddress, setDropoffAddress] = useState({
-    name: '',
-    addressText: '',
+    name: "",
+    addressText: "",
     latitude: null,
     longitude: null,
-    phone: '',
   });
-  const [recipientPhone, setRecipientPhone] = useState('');
-  const [senderPhone, setSenderPhone] = useState('');
-  const [remarks, setRemarks] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [senderPhone, setSenderPhone] = useState("");
+  const [remarks, setRemarks] = useState("");
 
   const [showContactsModal, setShowContactsModal] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [filteredContacts, setFilteredContacts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [loadingContacts, setLoadingContacts] = useState(false);
 
   // Nouveaux états pour distance et temps
@@ -57,8 +58,8 @@ function HomeScreen({ navigation }) {
 
   // États pour la localisation
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locationField, setLocationField] = useState(''); // 'pickup' ou 'dropoff'
-  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [locationField, setLocationField] = useState(""); // 'pickup' ou 'dropoff'
+  const [locationSearchQuery, setLocationSearchQuery] = useState("");
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
@@ -71,28 +72,28 @@ function HomeScreen({ navigation }) {
 
   const deliveryModes = [
     {
-      id: "motorbike",
+      id: "MOTO",
       label: "Moto",
       icon: "🏍️",
       time: "15-20 min",
       available: true,
     },
     {
-      id: "tricycle",
+      id: "TRICYCLE",
       label: "Tricycle",
       icon: "🛺",
       time: "20-30 min",
       available: false,
     },
     {
-      id: "car",
+      id: "VOITURE",
       label: "Voiture",
       icon: "🚗",
       time: "25-35 min",
       available: false,
     },
     {
-      id: "van",
+      id: "VAN",
       label: "Camion",
       icon: "🚐",
       time: "30-40 min",
@@ -103,9 +104,9 @@ function HomeScreen({ navigation }) {
   // Calculer la distance et le temps quand pickup et dropoff sont définis
   useEffect(() => {
     if (
-      pickupAddress.latitude && 
-      pickupAddress.longitude && 
-      dropoffAddress.latitude && 
+      pickupAddress.latitude &&
+      pickupAddress.longitude &&
+      dropoffAddress.latitude &&
       dropoffAddress.longitude
     ) {
       calculateRouteInfo();
@@ -118,13 +119,15 @@ function HomeScreen({ navigation }) {
   // Fonction pour calculer la distance haversine
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; // Rayon de la Terre en km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
     return distance;
   };
@@ -133,22 +136,22 @@ function HomeScreen({ navigation }) {
   const calculateEstimatedTime = (distanceKm, vehicle) => {
     // Vitesses moyennes en km/h selon le véhicule et le trafic urbain
     const speeds = {
-      motorbike: 25,  // Moto rapide en ville
-      car: 20,        // Voiture en trafic urbain
-      van: 18,        // Camionnette plus lente
+      MOTO: 25, // Moto rapide en ville
+      VOITURE: 20, // Voiture en trafic urbain
+      VAN: 18, // Camionnette plus lente
     };
 
     const speedKmh = speeds[vehicle] || 20;
     const timeHours = distanceKm / speedKmh;
     const timeMinutes = Math.round(timeHours * 60);
-    
+
     return timeMinutes;
   };
 
   // Fonction pour calculer les infos de route avec OSRM
   const calculateRouteInfo = async () => {
     setCalculatingRoute(true);
-    
+
     try {
       const { latitude: lat1, longitude: lon1 } = pickupAddress;
       const { latitude: lat2, longitude: lon2 } = dropoffAddress;
@@ -157,21 +160,21 @@ function HomeScreen({ navigation }) {
       const response = await fetch(
         `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`
       );
-      
+
       const data = await response.json();
-      
-      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+
+      if (data.code === "Ok" && data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         const distanceKm = route.distance / 1000; // Convertir en km
         const durationMinutes = Math.round(route.duration / 60); // Convertir en minutes
-        
+
         setDistance(distanceKm);
-        
+
         // Ajuster le temps selon le véhicule
         const adjustedTime = calculateEstimatedTime(distanceKm, selectedMode);
         setEstimatedTime(adjustedTime);
-        
-        console.log('Route calculée:', {
+
+        console.log("Route calculée:", {
           distance: `${distanceKm.toFixed(2)} km`,
           tempsOSRM: `${durationMinutes} min`,
           tempsAjusté: `${adjustedTime} min`,
@@ -181,24 +184,24 @@ function HomeScreen({ navigation }) {
         // Fallback: calcul basique si OSRM échoue
         const distanceKm = calculateDistance(lat1, lon1, lat2, lon2);
         const timeMinutes = calculateEstimatedTime(distanceKm, selectedMode);
-        
+
         setDistance(distanceKm);
         setEstimatedTime(timeMinutes);
-        
-        console.log('Calcul basique (OSRM non disponible):', {
+
+        console.log("Calcul basique (OSRM non disponible):", {
           distance: `${distanceKm.toFixed(2)} km`,
           temps: `${timeMinutes} min`,
         });
       }
     } catch (error) {
-      console.error('Erreur calcul route:', error);
-      
+      console.error("Erreur calcul route:", error);
+
       // Fallback en cas d'erreur
       const { latitude: lat1, longitude: lon1 } = pickupAddress;
       const { latitude: lat2, longitude: lon2 } = dropoffAddress;
       const distanceKm = calculateDistance(lat1, lon1, lat2, lon2);
       const timeMinutes = calculateEstimatedTime(distanceKm, selectedMode);
-      
+
       setDistance(distanceKm);
       setEstimatedTime(timeMinutes);
     } finally {
@@ -221,7 +224,7 @@ function HomeScreen({ navigation }) {
     }
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}h${mins > 0 ? ` ${mins}min` : ''}`;
+    return `${hours}h${mins > 0 ? ` ${mins}min` : ""}`;
   };
 
   // Charger les contacts
@@ -229,8 +232,8 @@ function HomeScreen({ navigation }) {
     setLoadingContacts(true);
     try {
       const { status } = await Contacts.requestPermissionsAsync();
-      
-      if (status === 'granted') {
+
+      if (status === "granted") {
         const { data } = await Contacts.getContactsAsync({
           fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
         });
@@ -238,10 +241,13 @@ function HomeScreen({ navigation }) {
         if (data.length > 0) {
           // Filtrer et formater les contacts qui ont un numéro
           const formattedContacts = data
-            .filter(contact => contact.phoneNumbers && contact.phoneNumbers.length > 0)
-            .map(contact => ({
+            .filter(
+              (contact) =>
+                contact.phoneNumbers && contact.phoneNumbers.length > 0
+            )
+            .map((contact) => ({
               id: contact.id,
-              name: contact.name || 'Sans nom',
+              name: contact.name || "Sans nom",
               phone: contact.phoneNumbers[0].number,
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
@@ -249,17 +255,17 @@ function HomeScreen({ navigation }) {
           setContacts(formattedContacts);
           setFilteredContacts(formattedContacts);
         } else {
-          Alert.alert('Info', 'Aucun contact trouvé sur votre appareil');
+          Alert.alert("Info", "Aucun contact trouvé sur votre appareil");
         }
       } else {
         Alert.alert(
-          'Permission refusée',
-          'Pour sélectionner un contact, autorisez l\'accès à vos contacts dans les paramètres'
+          "Permission refusée",
+          "Pour sélectionner un contact, autorisez l'accès à vos contacts dans les paramètres"
         );
       }
     } catch (error) {
-      console.error('Erreur chargement contacts:', error);
-      Alert.alert('Erreur', 'Impossible de charger les contacts');
+      console.error("Erreur chargement contacts:", error);
+      Alert.alert("Erreur", "Impossible de charger les contacts");
     } finally {
       setLoadingContacts(false);
     }
@@ -276,11 +282,11 @@ function HomeScreen({ navigation }) {
   // Rechercher dans les contacts
   const handleSearchContacts = (query) => {
     setSearchQuery(query);
-    if (query.trim() === '') {
+    if (query.trim() === "") {
       setFilteredContacts(contacts);
     } else {
       const filtered = contacts.filter(
-        contact =>
+        (contact) =>
           contact.name.toLowerCase().includes(query.toLowerCase()) ||
           contact.phone.includes(query)
       );
@@ -292,20 +298,20 @@ function HomeScreen({ navigation }) {
   const handleSelectContact = (contact) => {
     setRecipientPhone(contact.phone);
     setShowContactsModal(false);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
   // ============= GESTION DE LA LOCALISATION =============
-  
+
   // Obtenir la position actuelle
   const getCurrentLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (status !== 'granted') {
+
+      if (status !== "granted") {
         Alert.alert(
-          'Permission refusée',
-          'Pour utiliser votre position actuelle, autorisez l\'accès à la localisation'
+          "Permission refusée",
+          "Pour utiliser votre position actuelle, autorisez l'accès à la localisation"
         );
         return null;
       }
@@ -319,7 +325,7 @@ function HomeScreen({ navigation }) {
         longitude: location.coords.longitude,
       };
     } catch (error) {
-      console.error('Erreur localisation:', error);
+      console.error("Erreur localisation:", error);
       return null;
     }
   };
@@ -327,7 +333,8 @@ function HomeScreen({ navigation }) {
   // Géocoder la position actuelle
   const reverseGeocode = async (coords) => {
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?` +
+      const url =
+        `https://nominatim.openstreetmap.org/reverse?` +
         `lat=${coords.latitude}` +
         `&lon=${coords.longitude}` +
         `&format=json` +
@@ -336,7 +343,7 @@ function HomeScreen({ navigation }) {
 
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'YabaExpress/1.0',
+          "User-Agent": "YabaExpress/1.0",
         },
       });
 
@@ -344,8 +351,8 @@ function HomeScreen({ navigation }) {
 
       if (data && data.display_name) {
         return {
-          id: 'current-location',
-          name: 'Ma position actuelle',
+          id: "current-location",
+          name: "Ma position actuelle",
           addressText: data.display_name,
           subtitle: formatAddress(data.address),
           latitude: coords.latitude,
@@ -364,35 +371,35 @@ function HomeScreen({ navigation }) {
       //     address.city,
       //     address.region,
       //   ].filter(Boolean).join(', ');
-        
+
       //   return formatted || 'Position actuelle';
       // }
       // return 'Position actuelle';
     } catch (error) {
-      console.error('Erreur reverse geocode:', error);
-      return 'Position actuelle';
+      console.error("Erreur reverse geocode:", error);
+      return "Position actuelle";
     }
   };
 
   // Formater l'adresse de manière lisible
   const formatAddress = (address) => {
-    if (!address) return '';
-    
+    if (!address) return "";
+
     const parts = [];
-    
+
     if (address.road) parts.push(address.road);
     if (address.suburb) parts.push(address.suburb);
     if (address.city || address.town || address.village) {
       parts.push(address.city || address.town || address.village);
     }
-    
-    return parts.join(', ') || address.display_name || '';
+
+    return parts.join(", ") || address.display_name || "";
   };
 
   // Extraire un nom court pour le lieu
   const extractLocationName = (place) => {
     const address = place.address;
-    
+
     // Priorité: nom du lieu > route > quartier > ville
     if (place.name && place.name !== place.display_name) {
       return place.name;
@@ -403,8 +410,8 @@ function HomeScreen({ navigation }) {
     if (address.village) return address.village;
     if (address.town) return address.town;
     if (address.city) return address.city;
-    
-    return 'Lieu sélectionné';
+
+    return "Lieu sélectionné";
   };
 
   // Rechercher des lieux avec l'API Google Places
@@ -417,10 +424,11 @@ function HomeScreen({ navigation }) {
     setLoadingLocations(true);
     try {
       // Définir les limites pour Abidjan et la Côte d'Ivoire
-      const viewbox = '-5.5,-4.0,4.5,10.5'; // Côte d'Ivoire approximative
+      const viewbox = "-5.5,-4.0,4.5,10.5"; // Côte d'Ivoire approximative
       const bounded = 1; // Limiter aux résultats dans le viewbox
 
-      const url = `https://nominatim.openstreetmap.org/search?` +
+      const url =
+        `https://nominatim.openstreetmap.org/search?` +
         `q=${encodeURIComponent(query)}` +
         `&format=json` +
         `&addressdetails=1` +
@@ -432,7 +440,7 @@ function HomeScreen({ navigation }) {
 
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'YabaExpress/1.0', // Nominatim requiert un User-Agent
+          "User-Agent": "YabaExpress/1.0", // Nominatim requiert un User-Agent
         },
       });
 
@@ -456,10 +464,10 @@ function HomeScreen({ navigation }) {
       }
 
       // const GOOGLE_PLACES_API_KEY = 'VOTRE_CLE_API_GOOGLE'; // À remplacer
-      
+
       // // Si vous n'avez pas de clé API, utilisez expo-location geocoding
       // const results = await Location.geocodeAsync(query);
-      
+
       // if (results && results.length > 0) {
       //   const suggestions = results.slice(0, 5).map((result, index) => ({
       //     id: `${result.latitude}-${result.longitude}-${index}`,
@@ -467,13 +475,13 @@ function HomeScreen({ navigation }) {
       //     latitude: result.latitude,
       //     longitude: result.longitude,
       //   }));
-        
+
       //   setLocationSuggestions(suggestions);
       // } else {
       //   setLocationSuggestions([]);
       // }
     } catch (error) {
-      console.error('Erreur recherche lieux:', error);
+      console.error("Erreur recherche lieux:", error);
       setLocationSuggestions([]);
     } finally {
       setLoadingLocations(false);
@@ -484,9 +492,9 @@ function HomeScreen({ navigation }) {
   const handleOpenLocationModal = async (field) => {
     setLocationField(field);
     setShowLocationModal(true);
-    setLocationSearchQuery('');
+    setLocationSearchQuery("");
     setLocationSuggestions([]);
-    
+
     // Charger la position actuelle
     const coords = await getCurrentLocation();
     if (coords) {
@@ -517,16 +525,16 @@ function HomeScreen({ navigation }) {
       longitude: location.longitude,
     };
 
-    if (locationField === 'pickupAddress') {
-      setPickupAddress(locationData);
-      console.log('Pickup Data:', locationData);
-    } else if (locationField === 'dropoffAddress') {
+    if (locationField === "pickupAddress") {
+      setPickupAddress((prev) => ({ ...locationData, phone: prev.phone }));
+      console.log("Pickup Data:", locationData);
+    } else if (locationField === "dropoffAddress") {
       setDropoffAddress(locationData);
-      console.log('Dropoff Data:', locationData);
+      console.log("Dropoff Data:", locationData);
     }
-    
+
     setShowLocationModal(false);
-    setLocationSearchQuery('');
+    setLocationSearchQuery("");
     setLocationSuggestions([]);
   };
 
@@ -539,31 +547,41 @@ function HomeScreen({ navigation }) {
         ...currentLocation,
       });
     } else {
-      Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
+      Alert.alert("Erreur", "Impossible d'obtenir votre position actuelle");
     }
   };
 
-  const handleRequestDelivery = () => {
+  // ⭐ Fonction pour mettre à jour le numéro directement
+  const updateSenderPhone = (phone) => {
+    setPickupAddress((prev) => ({
+      ...prev,
+      phone: phone,
+    }));
+  };
 
+  const handleRequestDelivery = () => {
     if (!pickupAddress.addressText.trim()) {
-      Alert.alert('Erreur', 'Veuillez sélectionner le point de collecte');
+      Alert.alert("Erreur", "Veuillez sélectionner le point de collecte");
       return;
     }
     if (!dropoffAddress.addressText.trim()) {
-      Alert.alert('Erreur', 'Veuillez sélectionner le point de livraison');
+      Alert.alert("Erreur", "Veuillez sélectionner le point de livraison");
       return;
     }
     if (!senderPhone.trim()) {
-      Alert.alert('Erreur', "Veuillez entrer le numéro de l'expéditeur");
+      Alert.alert("Erreur", "Veuillez entrer le numéro de l'expéditeur");
       return;
     }
     if (!recipientPhone.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer le numéro du destinataire');
+      Alert.alert("Erreur", "Veuillez entrer le numéro du destinataire");
       return;
     }
 
-    setPickupAddress((currentPickup) => ({...currentPickup, phone: senderPhone}))
-    setDropoffAddress((currentDropoff) => ({...currentDropoff, phone: recipientPhone}))
+    setIsLoading(true);
+
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
 
     console.log({
       pickup: pickupAddress,
@@ -580,7 +598,10 @@ function HomeScreen({ navigation }) {
       size: selectedSize,
       mode: selectedMode,
       remarks: remarks.trim(),
+      distance: distance ? distance.toFixed(2) : null,
       time: `${estimatedTime} min`, // Calculé dynamiquement
+      recipientPhone: recipientPhone,
+      senderPhone: senderPhone,
     });
   };
 
@@ -619,7 +640,7 @@ function HomeScreen({ navigation }) {
         {/* Map qui déborde - Positionnée avec margin négatif */}
         {/* <View style={styles.mapWrapper}>
           <View style={styles.mapContainer}> */}
-            {/* <View style={styles.mapPlaceholder}>
+        {/* <View style={styles.mapPlaceholder}>
               <View style={styles.driversNearby}>
                 <View style={styles.greenDot} />
                 <Text style={styles.driversText}>3 drivers nearby</Text>
@@ -637,8 +658,8 @@ function HomeScreen({ navigation }) {
               </View>
             </View> */}
 
-            {/* Vrai Map remplacer lors des tests en live */}
-            {/* <MapView
+        {/* Vrai Map remplacer lors des tests en live */}
+        {/* <MapView
                 style={styles.mapPlaceholder}
                 initialRegion={{
             latitude: 5.3350,
@@ -676,64 +697,72 @@ function HomeScreen({ navigation }) {
 
           <View style={styles.inputSection}>
             <Text style={styles.label}>Point de collecte</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.inputContainer}
-              onPress={() => handleOpenLocationModal('pickupAddress')}
-              activeOpacity={0.7}>
+              onPress={() => handleOpenLocationModal("pickupAddress")}
+              activeOpacity={0.7}
+            >
               <Ionicons name="location" size={24} color="#ef4444" />
               <Text
-                style={[styles.input, !pickupAddress && styles.inputPlaceholder]}
+                style={[
+                  styles.input,
+                  !pickupAddress && styles.inputPlaceholder,
+                ]}
               >
-              {pickupAddress.name || 'Point de collecte'}
+                {pickupAddress.name || "Point de collecte"}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.inputSection}>
             <Text style={styles.label}>Point de livraison</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.inputContainer}
-              onPress={() => handleOpenLocationModal('dropoffAddress')}
-              activeOpacity={0.7}>
+              onPress={() => handleOpenLocationModal("dropoffAddress")}
+              activeOpacity={0.7}
+            >
               <Ionicons name="location-outline" size={24} color="#9ca3af" />
               <Text
-                style={[styles.input, !dropoffAddress && styles.inputPlaceholder]}
+                style={[
+                  styles.input,
+                  !dropoffAddress && styles.inputPlaceholder,
+                ]}
               >
-                {dropoffAddress.name || 'Point de livraison'}
+                {dropoffAddress.name || "Point de livraison"}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Affichage Distance et Temps */}
-            {(distance !== null || estimatedTime !== null) && (
-              <View style={styles.routeInfoContainer}>
-                {calculatingRoute ? (
-                  <View style={styles.calculatingContainer}>
-                    <ActivityIndicator size="small" color="#f97316" />
-                    <Text style={styles.calculatingText}>Calcul en cours...</Text>
-                  </View>
-                ) : (
-                  <View style={styles.routeInfoRow}>
-                    {distance !== null && (
-                      <View style={styles.routeInfoItem}>
-                        <Ionicons name="navigate" size={16} color="#6b7280" />
-                        <Text style={styles.routeInfoText}>
-                          {formatDistance(distance)}
-                        </Text>
-                      </View>
-                    )}
-                    {estimatedTime !== null && (
-                      <View style={styles.routeInfoItem}>
-                        <Ionicons name="time" size={16} color="#6b7280" />
-                        <Text style={styles.routeInfoText}>
-                          {formatTime(estimatedTime)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
-            )}
+          {(distance !== null || estimatedTime !== null) && (
+            <View style={styles.routeInfoContainer}>
+              {calculatingRoute ? (
+                <View style={styles.calculatingContainer}>
+                  <ActivityIndicator size="small" color="#f97316" />
+                  <Text style={styles.calculatingText}>Calcul en cours...</Text>
+                </View>
+              ) : (
+                <View style={styles.routeInfoRow}>
+                  {distance !== null && (
+                    <View style={styles.routeInfoItem}>
+                      <Ionicons name="navigate" size={16} color="#6b7280" />
+                      <Text style={styles.routeInfoText}>
+                        {formatDistance(distance)}
+                      </Text>
+                    </View>
+                  )}
+                  {estimatedTime !== null && (
+                    <View style={styles.routeInfoItem}>
+                      <Ionicons name="time" size={16} color="#6b7280" />
+                      <Text style={styles.routeInfoText}>
+                        {formatTime(estimatedTime)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
 
           <View style={styles.inputSection}>
             <Text style={styles.label}>Numéro du destinataire</Text>
@@ -757,7 +786,9 @@ function HomeScreen({ navigation }) {
           </View>
 
           <View style={styles.inputSection}>
-            <Text style={styles.label}>Remarque <Text style={styles.optionalText}>(facultatif)</Text></Text>
+            <Text style={styles.label}>
+              Remarque <Text style={styles.optionalText}>(facultatif)</Text>
+            </Text>
             <TextInput
               style={styles.remarksInput}
               placeholder="Ajoutez des instructions pour le livreur..."
@@ -848,9 +879,16 @@ function HomeScreen({ navigation }) {
             style={styles.requestButton}
             onPress={handleRequestDelivery}
             activeOpacity={0.8}
+            disabled={isLoading}
           >
-            <Ionicons name="cube-outline" size={24} color="#fff" />
-            <Text style={styles.requestButtonText}>Valider la requête</Text>
+            {isLoading ? (
+              <ThreeDotsLoader color="#fff" size={10} />
+            ) : (
+              <>
+                <Ionicons name="cube-outline" size={24} color="#fff" />
+                <Text style={styles.requestButtonText}>Valider la requête</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <View style={{ height: 20 }} />
@@ -873,7 +911,7 @@ function HomeScreen({ navigation }) {
                 style={styles.closeButton}
                 onPress={() => {
                   setShowContactsModal(false);
-                  setSearchQuery('');
+                  setSearchQuery("");
                 }}
               >
                 <Ionicons name="close" size={24} color="#6b7280" />
@@ -891,7 +929,7 @@ function HomeScreen({ navigation }) {
                 onChangeText={handleSearchContacts}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => handleSearchContacts('')}>
+                <TouchableOpacity onPress={() => handleSearchContacts("")}>
                   <Ionicons name="close-circle" size={20} color="#9ca3af" />
                 </TouchableOpacity>
               )}
@@ -900,13 +938,17 @@ function HomeScreen({ navigation }) {
             {/* Liste des contacts */}
             {loadingContacts ? (
               <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Chargement des contacts...</Text>
+                <Text style={styles.loadingText}>
+                  Chargement des contacts...
+                </Text>
               </View>
             ) : filteredContacts.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color="#d1d5db" />
                 <Text style={styles.emptyText}>
-                  {searchQuery ? 'Aucun contact trouvé' : 'Aucun contact disponible'}
+                  {searchQuery
+                    ? "Aucun contact trouvé"
+                    : "Aucun contact disponible"}
                 </Text>
               </View>
             ) : (
@@ -927,7 +969,11 @@ function HomeScreen({ navigation }) {
                       <Text style={styles.contactName}>{item.name}</Text>
                       <Text style={styles.contactPhone}>{item.phone}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color="#d1d5db"
+                    />
                   </TouchableOpacity>
                 )}
                 showsVerticalScrollIndicator={false}
@@ -945,17 +991,22 @@ function HomeScreen({ navigation }) {
         transparent={true}
         onRequestClose={() => setShowLocationModal(false)}
       >
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
           <View style={styles.contactsModal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {locationField === 'pickup' ? 'Point de collecte' : 'Point de livraison'}
+                {locationField === "pickup"
+                  ? "Point de collecte"
+                  : "Point de livraison"}
               </Text>
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => {
                   setShowLocationModal(false);
-                  setLocationSearchQuery('');
+                  setLocationSearchQuery("");
                 }}
               >
                 <Ionicons name="close" size={24} color="#6b7280" />
@@ -973,7 +1024,7 @@ function HomeScreen({ navigation }) {
                 autoFocus
               />
               {locationSearchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setLocationSearchQuery('')}>
+                <TouchableOpacity onPress={() => setLocationSearchQuery("")}>
                   <Ionicons name="close-circle" size={20} color="#9ca3af" />
                 </TouchableOpacity>
               )}
@@ -984,7 +1035,8 @@ function HomeScreen({ navigation }) {
                 <ActivityIndicator size="large" color="#f97316" />
                 <Text style={styles.loadingText}>Recherche en cours...</Text>
               </View>
-            ) : locationSuggestions.length === 0 && locationSearchQuery.length >= 3 ? (
+            ) : locationSuggestions.length === 0 &&
+              locationSearchQuery.length >= 3 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="location-outline" size={64} color="#d1d5db" />
                 <Text style={styles.emptyText}>Aucun lieu trouvé</Text>
@@ -998,23 +1050,33 @@ function HomeScreen({ navigation }) {
                     style={styles.locationItem}
                     onPress={() => handleSelectLocation(item)}
                   >
-                    <View style={[
-                      styles.locationIcon,
-                      item.isCurrentLocation && styles.currentLocationIcon,
-                    ]}>
-                      <Ionicons 
-                        name={item.isCurrentLocation ? "navigate" : "location"} 
-                        size={20} 
-                        color={item.isCurrentLocation ? "#10b981" : "#f97316"} 
+                    <View
+                      style={[
+                        styles.locationIcon,
+                        item.isCurrentLocation && styles.currentLocationIcon,
+                      ]}
+                    >
+                      <Ionicons
+                        name={item.isCurrentLocation ? "navigate" : "location"}
+                        size={20}
+                        color={item.isCurrentLocation ? "#10b981" : "#f97316"}
                       />
                     </View>
                     <View style={styles.locationInfo}>
-                      <Text style={styles.locationDescription}>{item.description}</Text>
+                      <Text style={styles.locationDescription}>
+                        {item.description}
+                      </Text>
                       {item.subtitle && (
-                        <Text style={styles.locationSubtitle}>{item.subtitle}</Text>
+                        <Text style={styles.locationSubtitle}>
+                          {item.subtitle}
+                        </Text>
                       )}
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color="#d1d5db"
+                    />
                   </TouchableOpacity>
                 )}
                 showsVerticalScrollIndicator={false}
@@ -1022,7 +1084,11 @@ function HomeScreen({ navigation }) {
                 ListEmptyComponent={
                   locationSearchQuery.length < 3 ? (
                     <View style={styles.emptyContainer}>
-                      <Ionicons name="location-outline" size={64} color="#d1d5db" />
+                      <Ionicons
+                        name="location-outline"
+                        size={64}
+                        color="#d1d5db"
+                      />
                       <Text style={styles.emptyText}>
                         Tapez au moins 3 caractères pour rechercher
                       </Text>
@@ -1225,59 +1291,59 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   inputPlaceholder: {
-    color: '#9ca3af',
+    color: "#9ca3af",
   },
   routeInfoContainer: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: "#fffbeb",
     borderRadius: 12,
     padding: 12,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#fef3c7',
+    borderColor: "#fef3c7",
   },
   calculatingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
   calculatingText: {
     fontSize: 14,
-    color: '#92400e',
-    fontWeight: '500',
+    color: "#92400e",
+    fontWeight: "500",
   },
   routeInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
   },
   routeInfoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   routeInfoText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#92400e',
+    fontWeight: "600",
+    color: "#92400e",
   },
   contactsButton: {
     width: 30,
     height: 30,
     borderRadius: 20,
-    backgroundColor: '#e539353f',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#e539353f",
+    justifyContent: "center",
+    alignItems: "center",
   },
   remarksInput: {
     fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#fff',
+    color: "#111827",
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
     minHeight: 100,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   sizeContainer: {
     flexDirection: "row",
@@ -1390,79 +1456,79 @@ const styles = StyleSheet.create({
   // Modal contact
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   contactsModal: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingTop: 20,
-    maxHeight: '85%',
+    maxHeight: "85%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 24,
     marginBottom: 20,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
   },
   closeButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginHorizontal: 24,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#1f2937',
+    color: "#1f2937",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 60,
   },
   loadingText: {
     fontSize: 15,
-    color: '#6b7280',
+    color: "#6b7280",
     marginTop: 12,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 60,
   },
   emptyText: {
     fontSize: 15,
-    color: '#6b7280',
+    color: "#6b7280",
     marginTop: 16,
   },
   contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1471,31 +1537,31 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
   },
   contactAvatarText: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: "700",
+    color: "#fff",
   },
   contactInfo: {
     flex: 1,
   },
   contactName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
     marginBottom: 4,
   },
   contactPhone: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   locationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1504,30 +1570,30 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff5f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#fff5f0",
+    justifyContent: "center",
+    alignItems: "center",
   },
   currentLocationIcon: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: "#d1fae5",
   },
   locationInfo: {
     flex: 1,
   },
   locationDescription: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
     marginBottom: 2,
   },
   locationSubtitle: {
     fontSize: 13,
-    color: '#10b981',
-    fontWeight: '600',
+    color: "#10b981",
+    fontWeight: "600",
   },
   separator: {
     height: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     marginHorizontal: 24,
   },
 });
