@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { requestOtp } from "../../utils/auth";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ThreeDotsLoader from "../../components/ThreeDotsLoader";
 
 const AuthScreen = ({ navigation }) => {
   const [userType, setUserType] = useState("CLIENT"); // 'client' ou 'livreur'
@@ -37,8 +38,11 @@ const AuthScreen = ({ navigation }) => {
 
     setIsAuthenticating(true)
 
-    const response = await requestOtp(identifier, loginMethod, userType)
-    console.log(response);
+    try{
+      const response = await requestOtp(identifier, loginMethod, userType)
+    }catch(error){
+      Alert.alert('Problème de connexion', 'Une erreur est survenu prière réessayer')
+    }
 
     setIsAuthenticating(false)
 
@@ -67,6 +71,16 @@ const AuthScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar />
+      {/* Loading Overlay avec Three Dots */}
+      {isAuthenticating && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ThreeDotsLoader color="#ef4444" size={16} />
+            <Text style={styles.loadingText}>Connexion en cours</Text>
+          </View>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -89,6 +103,7 @@ const AuthScreen = ({ navigation }) => {
                 userType === "CLIENT" && styles.userTypeButtonActive,
               ]}
               onPress={() => setUserType("CLIENT")}
+              disabled={isAuthenticating}
             >
               <Ionicons
                 name="person"
@@ -111,6 +126,7 @@ const AuthScreen = ({ navigation }) => {
                 userType === "LIVREUR" && styles.userTypeButtonActive,
               ]}
               onPress={() => setUserType("LIVREUR")}
+              disabled={isAuthenticating}
             >
               <Ionicons
                 name="bicycle"
@@ -135,6 +151,7 @@ const AuthScreen = ({ navigation }) => {
                 loginMethod === "email" && styles.loginMethodButtonActive,
               ]}
               onPress={() => setLoginMethod("email")}
+              disabled={isAuthenticating}
             >
               <Ionicons
                 name="mail"
@@ -157,6 +174,7 @@ const AuthScreen = ({ navigation }) => {
                 loginMethod === "phone" && styles.loginMethodButtonActive,
               ]}
               onPress={() => setLoginMethod("phone")}
+              disabled={isAuthenticating}
             >
               <Ionicons
                 name="call"
@@ -197,6 +215,7 @@ const AuthScreen = ({ navigation }) => {
                 }
                 autoCapitalize="none"
                 autoComplete={loginMethod === "email" ? "email" : "tel"}
+                editable={!isAuthenticating}
               />
             </View>
 
@@ -269,11 +288,18 @@ const AuthScreen = ({ navigation }) => {
 
         <View style={styles.bottomContainer}>
           <TouchableOpacity
-            style={styles.loginButton}
+            style={[styles.loginButton, isAuthenticating && styles.loginButtonDisabled]}
             onPress={handleLogin}
             activeOpacity={0.8}
+            disabled={isAuthenticating}
           >
-            <Text style={styles.loginButtonText}>Se connecter</Text>
+            {isAuthenticating ? (
+            <ThreeDotsLoader color="#fff" size={10} />
+          ) : (
+            <>
+              <Text style={styles.loginButtonText}>Se connecter</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </>)}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -412,6 +438,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   loginButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: "#ef4444",
     paddingVertical: 18,
     borderRadius: 12,
@@ -421,6 +451,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
   },
   loginButtonText: {
     fontSize: 15,
@@ -479,6 +512,35 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#ef4444",
     fontWeight: "700",
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 32,
+    paddingHorizontal: 48,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginTop: 20,
   },
 });
 

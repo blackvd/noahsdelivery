@@ -13,16 +13,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { verifyOtp } from "../../utils/auth";
 import { AuthContext } from "../../store/context/auth-context";
+import ThreeDotsLoader from "../../components/ThreeDotsLoader";
+import { useNavigation } from "@react-navigation/native";
 
 function OTPScreen({ navigation, route }) {
+  const naviguate = useNavigation();
   const { identifier, userType, loginMethod } = route.params || {};
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef([]);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const authCtx = useContext(AuthContext)
+  const authCtx = useContext(AuthContext);
 
   useEffect(() => {
     let interval;
@@ -97,26 +101,23 @@ function OTPScreen({ navigation, route }) {
       identifier,
       userType,
     });
+    setIsAuthenticating(true);
 
     try {
       var response = await verifyOtp(identifier, loginMethod, otpCode);
-      authCtx.authenticate(response)
-    } catch (error) {
-      console.log("Demande de OTP échoué");
-    }
+      console.log(response);
 
-    if (userType === "CLIENT") {
-      // Logique de vérification OTP
-      // Si succès, navigation sans possibilité de retour
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "CustomerApp" }], // ou votre écran principal
-      });
-    } else {
-      navigation.replace("DriverRegistration", {
-        identifier,
-        userType,
-      });
+      if (userType === "CLIENT") {
+        authCtx.authenticate(response, userType);
+      } else {
+        naviguate.replace("DriverRegistration", {
+          identifier,
+          userType,
+        });
+      }
+    } catch (error) {
+      Alert.alert("Connexion échoué", "Le code OTP fourni n'est pas valide");
+      setIsAuthenticating(false);
     }
   };
 
@@ -150,6 +151,17 @@ function OTPScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar />
+
+      {/* Loading Overlay avec Three Dots */}
+      {isAuthenticating && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ThreeDotsLoader color="#ef4444" size={16} />
+            <Text style={styles.loadingText}>Connexion en cours</Text>
+          </View>
+        </View>
+      )}
+
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
@@ -220,12 +232,17 @@ function OTPScreen({ navigation, route }) {
           style={[
             styles.verifyButton,
             otp.every((digit) => digit === "") && styles.verifyButtonDisabled,
+            isAuthenticating && styles.verifyButtonOnLoad,
           ]}
           onPress={handleVerify}
           activeOpacity={0.8}
-          disabled={otp.every((digit) => digit === "")}
+          disabled={otp.every((digit) => digit === "") || isAuthenticating}
         >
-          <Text style={styles.verifyButtonText}>Vérifier</Text>
+          {isAuthenticating ? (
+            <ThreeDotsLoader color="#fff" size={10} />
+          ) : (
+            <Text style={styles.verifyButtonText}>Vérifier</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -361,6 +378,38 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
     letterSpacing: 0.5,
+  },
+  verifyButtonOnLoad: {
+    opacity: 0.7,
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  loadingContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    paddingVertical: 32,
+    paddingHorizontal: 48,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1f2937",
+    marginTop: 20,
   },
 });
 

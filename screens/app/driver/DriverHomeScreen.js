@@ -1,5 +1,5 @@
 // src/screens/DriverHomeScreen.js
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,13 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { AuthContext } from '../../../store/context/auth-context';
 
 const { width } = Dimensions.get('window');
 
 const DriverHomeScreen = ({ navigation }) => {
+  const authCtx = useContext(AuthContext)
+
   const [isOnline, setIsOnline] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const slideAnim = useRef(new Animated.Value(-300)).current;
@@ -194,10 +197,11 @@ const DriverHomeScreen = ({ navigation }) => {
             text: 'Déconnexion',
             style: 'destructive',
             onPress: () => {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Auth' }],
-              });
+              authCtx.logout()
+              // navigation.reset({
+              //   index: 0,
+              //   routes: [{ name: 'Auth' }],
+              // });
             },
           },
         ]

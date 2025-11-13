@@ -441,8 +441,8 @@ function HomeScreen({ navigation }) {
         <SafeAreaView>
           <View style={styles.header}>
             <View>
-              <Text style={styles.greeting}>Welcome back,</Text>
-              <Text style={styles.headerTitle}>John Doe</Text>
+              <Text style={styles.greeting}>Bienvenue à nouveau,</Text>
+              <Text style={styles.headerTitle}>Cher•e Client•e</Text>
             </View>
             <TouchableOpacity
               style={styles.notificationButton}

@@ -15,13 +15,12 @@ import DeliveryHistoryDetailsScreen from "../screens/app/customer/DeliveryHistor
 import DriverRegistrationScreen from "../screens/auth/DriverRegistrationScreen";
 import DriverHomeScreen from "../screens/app/driver/DriverHomeScreen";
 import DeliveryInProgressScreen from "../screens/app/driver/DeliveryInProgressScreen";
-import AuthContextProvider, {
-  AuthContext,
-} from "../store/context/auth-context";
+import { AuthContext } from "../store/context/auth-context";
 
 const Stack = createStackNavigator();
 
 function AuthStack() {
+  const [isLoading, setIsLoading] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
   useEffect(() => {
@@ -34,8 +33,20 @@ function AuthStack() {
       setHasCompletedOnboarding(completed);
     } catch (error) {
       console.error("Erreur:", error);
+    } finally {
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 2000);
     }
   };
+
+  if (isLoading) {
+    return (
+      <>
+        <SplashScreen />
+      </>
+    );
+  }
 
   return (
     <Stack.Navigator
@@ -57,7 +68,7 @@ function AuthStack() {
   );
 }
 
-function AuthenticatedStack() {
+function CustomerStack() {
   return (
     <Stack.Navigator
       screenOptions={{
@@ -74,6 +85,19 @@ function AuthenticatedStack() {
         name="DeliveryHistoryDetails"
         component={DeliveryHistoryDetailsScreen}
       />
+    </Stack.Navigator>
+  );
+}
+
+function DriverStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animationEnabled: true,
+        animation: "scale_from_center",
+      }}
+    >
       <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
       <Stack.Screen
         name="DeliveryInProgress"
@@ -84,31 +108,21 @@ function AuthenticatedStack() {
 }
 
 const AppNavigator = () => {
-  const [isLoading, setIsLoading] = useState(true);
 
   const authCtx = useContext(AuthContext);
 
-  useEffect(() => {
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <>
-        <SplashScreen />
-      </>
-    );
-  }
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     setIsLoading(false);
+  //   }, 2000);
+  // }, []);
 
   return (
-    <AuthContextProvider>
-      <NavigationContainer>
-        {!authCtx.isAuthenticated && <AuthStack />}
-        {authCtx.isAuthenticated && <AuthenticatedStack />}
-      </NavigationContainer>
-    </AuthContextProvider>
+    <NavigationContainer>
+      {!authCtx.isAuthenticated && <AuthStack />}
+      {authCtx.isAuthenticated &&
+        (authCtx.clientType === "CLIENT" ? <CustomerStack /> : <DriverStack />)}
+    </NavigationContainer>
   );
 };
 

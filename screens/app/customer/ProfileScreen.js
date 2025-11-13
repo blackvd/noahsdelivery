@@ -1,5 +1,5 @@
 // src/screens/ProfileScreen.js
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,10 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { AuthContext } from '../../../store/context/auth-context';
 
 const ProfileScreen = ({ navigation }) => {
+  const authCtx = useContext(AuthContext)
   // Données utilisateur (à remplacer par des vraies données)
   const userData = {
     name: 'John Doe',
@@ -40,10 +42,11 @@ const ProfileScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: () => {
             // Logique de déconnexion
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Auth' }],
-            });
+            authCtx.logout()
+            // navigation.reset({
+            //   index: 0,
+            //   routes: [{ name: 'Auth' }],
+            // });
           },
         },
       ],
