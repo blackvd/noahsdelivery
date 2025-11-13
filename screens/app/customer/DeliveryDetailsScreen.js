@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   Dimensions,
   ScrollView,
@@ -10,11 +10,20 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { AuthContext } from "../../../store/context/auth-context";
+import { computePrice } from "../../../utils/delivery";
 
 const { width } = Dimensions.get("window");
 
 function DeliveryDetailsScreen({ navigation, route }) {
-  const [selectedPayment, setSelectedPayment] = useState("mobile");
+  const [selectedPayment, setSelectedPayment] = useState("cash");
+  const [priceBreakdown, setPriceBreakdown] = useState({
+    baseFare: 0,
+    distance: 0,
+    serviceFee: 0,
+    total: 0,
+  });
+  const authCtx = useContext(AuthContext);
 
   const deliveryData = route?.params;
 
@@ -24,27 +33,56 @@ function DeliveryDetailsScreen({ navigation, route }) {
       label: "Mobile Money",
       icon: "phone-portrait",
       iconBg: "#ef4444",
+      available: false,
     },
     {
       id: "card",
       label: "Carte de crédit",
       icon: "card",
       iconBg: "#6b7280",
+      available: false,
     },
     {
       id: "cash",
       label: "Espèce",
       icon: "cash",
       iconBg: "#6b7280",
+      available: true,
     },
   ];
 
-  const priceBreakdown = {
-    baseFare: 991,
-    distance: 495,
-    serviceFee: 165,
-    total: 1653,
-  };
+  useEffect(() => {
+    const onComputePrice = async () => {
+      const data = {
+        pickupAddress: {
+          longitude: deliveryData.pickup.longitude,
+          latitude: deliveryData.pickup.latitude,
+        },
+        dropoffAddress: {
+          longitude: deliveryData.dropoff.longitude,
+          latitude: deliveryData.dropoff.latitude,
+        },
+      };
+      const response = await computePrice(data, authCtx.token);
+
+      setPriceBreakdown((currentPrice) => ({
+        ...currentPrice,
+        baseFare: response.basePrice,
+        distance: response.distance,
+        serviceFee: response.charge,
+        total: response.basePrice + response.distance + response.charge,
+      }));
+    };
+
+    onComputePrice();
+  }, []);
+
+  // const priceBreakdown = {
+  //   baseFare: 991,
+  //   distance: 495,
+  //   serviceFee: 165,
+  //   total: 1653,
+  // };
 
   const handleConfirm = () => {
     console.log("Delivery confirmed with:", {
@@ -78,171 +116,167 @@ function DeliveryDetailsScreen({ navigation, route }) {
         </View>
       </SafeAreaView>
 
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Pickup & Drop-off */}
-          <View style={styles.locationCard}>
-            <View style={styles.locationItem}>
-              <View style={styles.locationDot} />
-              <View style={styles.locationLine} />
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel}>Point de collecte</Text>
-                <Text style={styles.locationAddress}>
-                  {deliveryData.pickup}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.locationItem}>
-              <View style={[styles.locationDot, styles.locationDotBlack]} />
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel}>Point de livraison</Text>
-                <Text style={styles.locationAddress}>
-                  {deliveryData.dropoff}
-                </Text>
-              </View>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Pickup & Drop-off */}
+        <View style={styles.locationCard}>
+          <View style={styles.locationItem}>
+            <View style={styles.locationDot} />
+            <View style={styles.locationLine} />
+            <View style={styles.locationInfo}>
+              <Text style={styles.locationLabel}>Point de collecte</Text>
+              <Text style={styles.locationAddress}>
+                {deliveryData.pickup.name}
+              </Text>
             </View>
           </View>
 
-          {/* Info Cards */}
-          <View style={styles.infoGrid}>
-            <View style={styles.infoCard}>
-              <Ionicons name="cube-outline" size={32} color="#ef4444" />
-              <Text style={styles.infoLabel}>Taille</Text>
-              <Text style={styles.infoValue}>{deliveryData.size}</Text>
-            </View>
-
-            <View style={styles.infoCard}>
-              <Ionicons name="time-outline" size={32} color="#ef4444" />
-              <Text style={styles.infoLabel}>Durée estimée</Text>
-              <Text style={styles.infoValue}>{deliveryData.time}</Text>
-            </View>
-
-            <View style={styles.infoCard}>
-              <Ionicons name="cash-outline" size={32} color="#ef4444" />
-              <Text style={styles.infoLabel}>Prix</Text>
-              <Text style={styles.infoValue}>{priceBreakdown.total} F</Text>
+          <View style={styles.locationItem}>
+            <View style={[styles.locationDot, styles.locationDotBlack]} />
+            <View style={styles.locationInfo}>
+              <Text style={styles.locationLabel}>Point de livraison</Text>
+              <Text style={styles.locationAddress}>
+                {deliveryData.dropoff.name}
+              </Text>
             </View>
           </View>
-
-          {/* Delivery Mode */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Mode de livraison</Text>
-            <View style={styles.deliveryModeCard}>
-              <View style={styles.modeIconContainer}>
-                <Text style={styles.modeIcon}>🏍️</Text>
-              </View>
-              <View style={styles.modeInfo}>
-                <Text style={styles.modeLabel}>Moto</Text>
-                <Text style={styles.modeDescription}>Rapide et fiable</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Payment Method */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Methode de paiement</Text>
-            <View style={styles.paymentMethods}>
-              {paymentMethods.map((method) => (
-                <TouchableOpacity
-                  key={method.id}
-                  style={[
-                    styles.paymentCard,
-                    selectedPayment === method.id && styles.paymentCardActive,
-                  ]}
-                  onPress={() => setSelectedPayment(method.id)}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.paymentIcon,
-                      {
-                        backgroundColor:
-                          selectedPayment === method.id ? "#ef4444" : "#f3f4f6",
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={method.icon}
-                      size={24}
-                      color={selectedPayment === method.id ? "#fff" : "#6b7280"}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.paymentLabel,
-                      selectedPayment === method.id &&
-                        styles.paymentLabelActive,
-                    ]}
-                  >
-                    {method.label}
-                  </Text>
-                  <View
-                    style={[
-                      styles.radioButton,
-                      selectedPayment === method.id && styles.radioButtonActive,
-                    ]}
-                  >
-                    {selectedPayment === method.id && (
-                      <View style={styles.radioButtonInner} />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Price Breakdown */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Détail du prix</Text>
-            <View style={styles.priceCard}>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Prix de base</Text>
-                <Text style={styles.priceValue}>
-                  {priceBreakdown.baseFare} F
-                </Text>
-              </View>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Charge distance</Text>
-                <Text style={styles.priceValue}>
-                  {priceBreakdown.distance} F
-                </Text>
-              </View>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Frais de service</Text>
-                <Text style={styles.priceValue}>
-                  {priceBreakdown.serviceFee} F
-                </Text>
-              </View>
-
-              <View style={styles.priceDivider} />
-
-              <View style={styles.priceRow}>
-                <Text style={styles.priceTotalLabel}>Total</Text>
-                <Text style={styles.priceTotalValue}>
-                  {priceBreakdown.total} F CFA
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={{ height: 100 }} />
-        </ScrollView>
-
-        {/* Fixed Bottom Button */}
-        <View style={styles.bottomContainer}>
-          <TouchableOpacity
-            style={styles.confirmButton}
-            onPress={handleConfirm}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.confirmButtonText}>
-              Confirmer et demander la livraison
-            </Text>
-          </TouchableOpacity>
         </View>
+
+        {/* Info Cards */}
+        <View style={styles.infoGrid}>
+          <View style={styles.infoCard}>
+            <Ionicons name="cube-outline" size={32} color="#ef4444" />
+            <Text style={styles.infoLabel}>Taille</Text>
+            <Text style={styles.infoValue}>{deliveryData.size}</Text>
+          </View>
+
+          <View style={styles.infoCard}>
+            <Ionicons name="time-outline" size={32} color="#ef4444" />
+            <Text style={styles.infoLabel}>Durée estimée</Text>
+            <Text style={styles.infoValue}>{deliveryData.time}</Text>
+          </View>
+
+          <View style={styles.infoCard}>
+            <Ionicons name="cash-outline" size={32} color="#ef4444" />
+            <Text style={styles.infoLabel}>Prix</Text>
+            <Text style={styles.infoValue}>{priceBreakdown.total} F</Text>
+          </View>
+        </View>
+
+        {/* Delivery Mode */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Mode de livraison</Text>
+          <View style={styles.deliveryModeCard}>
+            <View style={styles.modeIconContainer}>
+              <Text style={styles.modeIcon}>🏍️</Text>
+            </View>
+            <View style={styles.modeInfo}>
+              <Text style={styles.modeLabel}>Moto</Text>
+              <Text style={styles.modeDescription}>Rapide et fiable</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Payment Method */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Methode de paiement</Text>
+          <View style={styles.paymentMethods}>
+            {paymentMethods.map((method) => (
+              <TouchableOpacity
+                key={method.id}
+                style={[
+                  styles.paymentCard,
+                  selectedPayment === method.id && styles.paymentCardActive,
+                ]}
+                onPress={() => setSelectedPayment(method.id)}
+                activeOpacity={0.7}
+                disabled={!method.available}
+              >
+                <View
+                  style={[
+                    styles.paymentIcon,
+                    {
+                      backgroundColor:
+                        selectedPayment === method.id ? "#ef4444" : "#f3f4f6",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={method.icon}
+                    size={24}
+                    color={selectedPayment === method.id ? "#fff" : "#6b7280"}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.paymentLabel,
+                    selectedPayment === method.id && styles.paymentLabelActive,
+                  ]}
+                >
+                  {method.label}
+                </Text>
+                <View
+                  style={[
+                    styles.radioButton,
+                    selectedPayment === method.id && styles.radioButtonActive,
+                  ]}
+                >
+                  {selectedPayment === method.id && (
+                    <View style={styles.radioButtonInner} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Price Breakdown */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Détail du prix</Text>
+          <View style={styles.priceCard}>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Prix de base</Text>
+              <Text style={styles.priceValue}>{priceBreakdown.baseFare} F</Text>
+            </View>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Charge distance</Text>
+              <Text style={styles.priceValue}>{priceBreakdown.distance} F</Text>
+            </View>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Frais de service</Text>
+              <Text style={styles.priceValue}>
+                {priceBreakdown.serviceFee} F
+              </Text>
+            </View>
+
+            <View style={styles.priceDivider} />
+
+            <View style={styles.priceRow}>
+              <Text style={styles.priceTotalLabel}>Total</Text>
+              <Text style={styles.priceTotalValue}>
+                {priceBreakdown.total} F CFA
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Fixed Bottom Button */}
+      <View style={styles.bottomContainer}>
+        <TouchableOpacity
+          style={styles.confirmButton}
+          onPress={handleConfirm}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.confirmButtonText}>
+            Confirmer et demander la livraison
+          </Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaProvider>
   );
 }

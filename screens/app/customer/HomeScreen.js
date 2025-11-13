@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   KeyboardAvoidingView,
@@ -30,14 +31,17 @@ function HomeScreen({ navigation }) {
     addressText: '',
     latitude: null,
     longitude: null,
+    phone: '',
   });
   const [dropoffAddress, setDropoffAddress] = useState({
     name: '',
     addressText: '',
     latitude: null,
     longitude: null,
+    phone: '',
   });
   const [recipientPhone, setRecipientPhone] = useState('');
+  const [senderPhone, setSenderPhone] = useState('');
   const [remarks, setRemarks] = useState('');
 
   const [showContactsModal, setShowContactsModal] = useState(false);
@@ -45,6 +49,11 @@ function HomeScreen({ navigation }) {
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingContacts, setLoadingContacts] = useState(false);
+
+  // Nouveaux états pour distance et temps
+  const [distance, setDistance] = useState(null);
+  const [estimatedTime, setEstimatedTime] = useState(null);
+  const [calculatingRoute, setCalculatingRoute] = useState(false);
 
   // États pour la localisation
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -90,6 +99,130 @@ function HomeScreen({ navigation }) {
       available: false,
     },
   ];
+
+  // Calculer la distance et le temps quand pickup et dropoff sont définis
+  useEffect(() => {
+    if (
+      pickupAddress.latitude && 
+      pickupAddress.longitude && 
+      dropoffAddress.latitude && 
+      dropoffAddress.longitude
+    ) {
+      calculateRouteInfo();
+    } else {
+      setDistance(null);
+      setEstimatedTime(null);
+    }
+  }, [pickupAddress, dropoffAddress, selectedMode]);
+
+  // Fonction pour calculer la distance haversine
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Rayon de la Terre en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    return distance;
+  };
+
+  // Fonction pour calculer le temps estimé
+  const calculateEstimatedTime = (distanceKm, vehicle) => {
+    // Vitesses moyennes en km/h selon le véhicule et le trafic urbain
+    const speeds = {
+      motorbike: 25,  // Moto rapide en ville
+      car: 20,        // Voiture en trafic urbain
+      van: 18,        // Camionnette plus lente
+    };
+
+    const speedKmh = speeds[vehicle] || 20;
+    const timeHours = distanceKm / speedKmh;
+    const timeMinutes = Math.round(timeHours * 60);
+    
+    return timeMinutes;
+  };
+
+  // Fonction pour calculer les infos de route avec OSRM
+  const calculateRouteInfo = async () => {
+    setCalculatingRoute(true);
+    
+    try {
+      const { latitude: lat1, longitude: lon1 } = pickupAddress;
+      const { latitude: lat2, longitude: lon2 } = dropoffAddress;
+
+      // Appel à l'API OSRM pour obtenir la route réelle
+      const response = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`
+      );
+      
+      const data = await response.json();
+      
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const distanceKm = route.distance / 1000; // Convertir en km
+        const durationMinutes = Math.round(route.duration / 60); // Convertir en minutes
+        
+        setDistance(distanceKm);
+        
+        // Ajuster le temps selon le véhicule
+        const adjustedTime = calculateEstimatedTime(distanceKm, selectedMode);
+        setEstimatedTime(adjustedTime);
+        
+        console.log('Route calculée:', {
+          distance: `${distanceKm.toFixed(2)} km`,
+          tempsOSRM: `${durationMinutes} min`,
+          tempsAjusté: `${adjustedTime} min`,
+          véhicule: selectedMode,
+        });
+      } else {
+        // Fallback: calcul basique si OSRM échoue
+        const distanceKm = calculateDistance(lat1, lon1, lat2, lon2);
+        const timeMinutes = calculateEstimatedTime(distanceKm, selectedMode);
+        
+        setDistance(distanceKm);
+        setEstimatedTime(timeMinutes);
+        
+        console.log('Calcul basique (OSRM non disponible):', {
+          distance: `${distanceKm.toFixed(2)} km`,
+          temps: `${timeMinutes} min`,
+        });
+      }
+    } catch (error) {
+      console.error('Erreur calcul route:', error);
+      
+      // Fallback en cas d'erreur
+      const { latitude: lat1, longitude: lon1 } = pickupAddress;
+      const { latitude: lat2, longitude: lon2 } = dropoffAddress;
+      const distanceKm = calculateDistance(lat1, lon1, lat2, lon2);
+      const timeMinutes = calculateEstimatedTime(distanceKm, selectedMode);
+      
+      setDistance(distanceKm);
+      setEstimatedTime(timeMinutes);
+    } finally {
+      setCalculatingRoute(false);
+    }
+  };
+
+  // Fonction pour formater la distance
+  const formatDistance = (km) => {
+    if (km < 1) {
+      return `${Math.round(km * 1000)} m`;
+    }
+    return `${km.toFixed(1)} km`;
+  };
+
+  // Fonction pour formater le temps
+  const formatTime = (minutes) => {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h${mins > 0 ? ` ${mins}min` : ''}`;
+  };
 
   // Charger les contacts
   const loadContacts = async () => {
@@ -411,12 +544,32 @@ function HomeScreen({ navigation }) {
   };
 
   const handleRequestDelivery = () => {
+
+    if (!pickupAddress.addressText.trim()) {
+      Alert.alert('Erreur', 'Veuillez sélectionner le point de collecte');
+      return;
+    }
+    if (!dropoffAddress.addressText.trim()) {
+      Alert.alert('Erreur', 'Veuillez sélectionner le point de livraison');
+      return;
+    }
+    if (!senderPhone.trim()) {
+      Alert.alert('Erreur', "Veuillez entrer le numéro de l'expéditeur");
+      return;
+    }
+    if (!recipientPhone.trim()) {
+      Alert.alert('Erreur', 'Veuillez entrer le numéro du destinataire');
+      return;
+    }
+
+    setPickupAddress((currentPickup) => ({...currentPickup, phone: senderPhone}))
+    setDropoffAddress((currentDropoff) => ({...currentDropoff, phone: recipientPhone}))
+
     console.log({
       pickup: pickupAddress,
       dropoff: dropoffAddress,
       size: selectedSize,
       mode: selectedMode,
-      recipientPhone,
       remarks: remarks.trim(),
     });
     // Navigation vers l'écran de confirmation
@@ -426,9 +579,8 @@ function HomeScreen({ navigation }) {
       dropoff: dropoffAddress,
       size: selectedSize,
       mode: selectedMode,
-      recipientPhone,
       remarks: remarks.trim(),
-      time: "24 min", // Calculé dynamiquement
+      time: `${estimatedTime} min`, // Calculé dynamiquement
     });
   };
 
@@ -508,6 +660,21 @@ function HomeScreen({ navigation }) {
           <Text style={styles.formTitle}>Demander une livraison</Text>
 
           <View style={styles.inputSection}>
+            <Text style={styles.label}>Numéro de l'expéditeur</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="call" size={20} color="#ef4444" />
+              <TextInput
+                style={styles.input}
+                placeholder="Numéro de téléphone"
+                placeholderTextColor="#9ca3af"
+                value={senderPhone}
+                onChangeText={setSenderPhone}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputSection}>
             <Text style={styles.label}>Point de collecte</Text>
             <TouchableOpacity 
               style={styles.inputContainer}
@@ -536,6 +703,37 @@ function HomeScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Affichage Distance et Temps */}
+            {(distance !== null || estimatedTime !== null) && (
+              <View style={styles.routeInfoContainer}>
+                {calculatingRoute ? (
+                  <View style={styles.calculatingContainer}>
+                    <ActivityIndicator size="small" color="#f97316" />
+                    <Text style={styles.calculatingText}>Calcul en cours...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.routeInfoRow}>
+                    {distance !== null && (
+                      <View style={styles.routeInfoItem}>
+                        <Ionicons name="navigate" size={16} color="#6b7280" />
+                        <Text style={styles.routeInfoText}>
+                          {formatDistance(distance)}
+                        </Text>
+                      </View>
+                    )}
+                    {estimatedTime !== null && (
+                      <View style={styles.routeInfoItem}>
+                        <Ionicons name="time" size={16} color="#6b7280" />
+                        <Text style={styles.routeInfoText}>
+                          {formatTime(estimatedTime)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
 
           <View style={styles.inputSection}>
             <Text style={styles.label}>Numéro du destinataire</Text>
@@ -626,7 +824,7 @@ function HomeScreen({ navigation }) {
                   >
                     {mode.label}
                   </Text>
-                  <View style={styles.modeTimeContainer}>
+                  {/* <View style={styles.modeTimeContainer}>
                     <Ionicons
                       name="time-outline"
                       size={14}
@@ -640,7 +838,7 @@ function HomeScreen({ navigation }) {
                     >
                       {mode.time}
                     </Text>
-                  </View>
+                  </View> */}
                 </TouchableOpacity>
               ))}
             </View>
@@ -1028,6 +1226,40 @@ const styles = StyleSheet.create({
   },
   inputPlaceholder: {
     color: '#9ca3af',
+  },
+  routeInfoContainer: {
+    backgroundColor: '#fffbeb',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+  },
+  calculatingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  calculatingText: {
+    fontSize: 14,
+    color: '#92400e',
+    fontWeight: '500',
+  },
+  routeInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  routeInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  routeInfoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400e',
   },
   contactsButton: {
     width: 30,
