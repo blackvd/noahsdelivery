@@ -24,19 +24,23 @@ const DeliveryHistoryDetailsScreen = ({ navigation, route }) => {
   const handleReorder = () => {
     navigation.navigate('Home', {
       reorderData: {
-        pickup: delivery.pickup.address,
-        dropoff: delivery.dropoff.address,
+        pickup: delivery.addressDeliveries.find(
+          (addr) => addr.type === "PICKUP"
+        ).name,
+        dropoff: delivery.addressDeliveries.find(
+          (addr) => addr.type === "DROPOFF"
+        ).name,
         size: delivery.packageSize,
-        mode: delivery.deliveryMode,
+        mode: delivery.deliveryType,
       },
     });
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed':
+      case 'DELIVERED':
         return '#10b981';
-      case 'canceled':
+      case 'CANCELLED':
         return '#ef4444';
       default:
         return '#6b7280';
@@ -89,7 +93,7 @@ const DeliveryHistoryDetailsScreen = ({ navigation, route }) => {
           >
             <Ionicons
               name={
-                delivery.status === 'completed'
+                delivery.status === 'DELIVERED'
                   ? 'checkmark-circle'
                   : 'close-circle'
               }
@@ -98,12 +102,13 @@ const DeliveryHistoryDetailsScreen = ({ navigation, route }) => {
             />
           </View>
           <Text style={styles.statusTitle}>
-            {delivery.status === 'completed'
+            {delivery.status === 'DELIVERED'
               ? 'Livraison terminée'
               : 'Livraison annulée'}
           </Text>
           <Text style={styles.statusDate}>
-            {delivery.date} • {delivery.time}
+            {/* {delivery.date} • {delivery.estim} */}
+             {delivery.deliveredAt}
           </Text>
         </View>
 
@@ -113,10 +118,10 @@ const DeliveryHistoryDetailsScreen = ({ navigation, route }) => {
           <View style={styles.infoCard}>
             <InfoRow label="Order ID" value={delivery.id} copyable />
             <InfoRow label="Package Size" value={delivery.packageSize} />
-            <InfoRow label="Delivery Mode" value={delivery.deliveryMode} />
+            <InfoRow label="Delivery Mode" value={delivery.deliveryType} />
             <InfoRow
               label="Total Amount"
-              value={`${delivery.price} F CFA`}
+              value={`${delivery.estimatedPrice} F CFA`}
               highlighted
             />
           </View>
@@ -131,10 +136,14 @@ const DeliveryHistoryDetailsScreen = ({ navigation, route }) => {
               <View style={styles.routeContent}>
                 <Text style={styles.routeLabel}>Point de collecte</Text>
                 <Text style={styles.routeAddress}>
-                  {delivery.pickup.location}
+                  {delivery.addressDeliveries.find(
+                    (addr) => addr.type === "PICKUP"
+                  ).name}
                 </Text>
                 <Text style={styles.routeSubAddress}>
-                  {delivery.pickup.address}
+                  {delivery.addressDeliveries.find(
+                    (addr) => addr.type === "PICKUP"
+                  ).addressText}
                 </Text>
               </View>
             </View>
@@ -146,10 +155,14 @@ const DeliveryHistoryDetailsScreen = ({ navigation, route }) => {
               <View style={styles.routeContent}>
                 <Text style={styles.routeLabel}>Point de livraison</Text>
                 <Text style={styles.routeAddress}>
-                  {delivery.dropoff.location}
+                  {delivery.addressDeliveries.find(
+                    (addr) => addr.type === "DROPOFF"
+                  ).name}
                 </Text>
                 <Text style={styles.routeSubAddress}>
-                  {delivery.dropoff.address}
+                  {delivery.addressDeliveries.find(
+                    (addr) => addr.type === "DROPOFF"
+                  ).addressText}
                 </Text>
               </View>
             </View>
@@ -161,19 +174,19 @@ const DeliveryHistoryDetailsScreen = ({ navigation, route }) => {
           <Text style={styles.sectionTitle}>Information du livreur</Text>
           <View style={styles.driverCard}>
             <Image
-              source={{ uri: delivery.driver.photo }}
+              source={{ uri: `https://avatar.iran.liara.run/username?username=${delivery.courier.lastName + " " + delivery.courier.firstName}` }}
               style={styles.driverPhoto}
             />
             <View style={styles.driverInfo}>
-              <Text style={styles.driverName}>{delivery.driver.name}</Text>
-              <Text style={styles.driverVehicle}>{delivery.driver.vehicle}</Text>
-              {delivery.status === 'completed' && delivery.driver.rating > 0 && (
+              <Text style={styles.driverName}>{delivery.courier.lastName + " " + delivery.courier.firstName}</Text>
+              {/* <Text style={styles.driverVehicle}>{delivery.driver.vehicle}</Text> */}
+              {delivery.status === 'DELIVERED' && delivery.courier.averageRating > 0 && (
                 <View style={styles.driverRating}>
-                  {renderStars(delivery.driver.rating)}
+                  {renderStars(delivery.courier.averageRating)}
                 </View>
               )}
             </View>
-            {delivery.status === 'completed' && (
+            {delivery.status === 'DELIVERED' && (
               <TouchableOpacity
                 style={styles.callButton}
                 onPress={handleCall}
@@ -186,7 +199,7 @@ const DeliveryHistoryDetailsScreen = ({ navigation, route }) => {
         </View>
 
         {/* Actions */}
-        {delivery.status === 'completed' && (
+        {delivery.status === 'DELIVERED' && (
           <View style={styles.actionsSection}>
             <TouchableOpacity
               style={styles.reorderButton}

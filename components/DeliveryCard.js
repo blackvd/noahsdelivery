@@ -5,9 +5,9 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 const DeliveryCard = ({ delivery, onPress }) => {
   const getStatusColor = (status) => {
     switch (status) {
-      case "completed":
+      case "DELIVERED":
         return "#10b981";
-      case "canceled":
+      case "CANCELLED":
         return "#ef4444";
       default:
         return "#6b7280";
@@ -62,7 +62,11 @@ const DeliveryCard = ({ delivery, onPress }) => {
           <View style={styles.locationContent}>
             <Text style={styles.locationLabel}>Départ</Text>
             <Text style={styles.locationAddress}>
-              {delivery.pickup.location}
+              {
+                delivery.addressDeliveries.find(
+                  (addr) => addr.type === "PICKUP"
+                ).name
+              }
             </Text>
           </View>
         </View>
@@ -73,7 +77,11 @@ const DeliveryCard = ({ delivery, onPress }) => {
           <View style={styles.locationContent}>
             <Text style={styles.locationLabel}>Arrivée</Text>
             <Text style={styles.locationAddress}>
-              {delivery.dropoff.location}
+              {
+                delivery.addressDeliveries.find(
+                  (addr) => addr.type === "DROPOFF"
+                ).name
+              }
             </Text>
           </View>
         </View>
@@ -81,20 +89,20 @@ const DeliveryCard = ({ delivery, onPress }) => {
 
       {/* Footer */}
       <View style={styles.cardFooter}>
-        <View style={styles.driverInfo}>
+        {/* <View style={styles.driverInfo}>
           <Ionicons name="person-circle-outline" size={24} color="#6b7280" />
           <View style={styles.driverDetails}>
-            <Text style={styles.driverName}>{delivery.driver.name}</Text>
+            <Text style={styles.driverName}>{delivery.courier.lastName + " " + delivery.courier.lastName}</Text>
             {delivery.status === "completed" && (
               <View style={styles.ratingContainer}>
                 {renderStars(delivery.driver.rating)}
               </View>
             )}
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.priceContainer}>
-          <Text style={styles.priceAmount}>{delivery.price} F</Text>
+          <Text style={styles.priceAmount}>{delivery.estimatedPrice} F</Text>
           <Text style={styles.priceCurrency}>CFA</Text>
         </View>
 

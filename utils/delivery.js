@@ -57,3 +57,9 @@ export async function findDelivery(id, authToken) {
 
   return response.data
 }
+
+export async function getDeliveries(authToken) {
+  const response = await axios.get(`${BASE_URL}`, {headers: {'Authorization': `Bearer ${authToken}`}})
+
+  return response.data
+}

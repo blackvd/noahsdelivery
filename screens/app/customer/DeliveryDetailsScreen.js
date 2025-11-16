@@ -109,7 +109,7 @@ function DeliveryDetailsScreen({ navigation, route }) {
       //navigation.navigate('TrackingScreen');
       setIsLoading(false);
 
-      navigation.navigate("Tracking", {id: response.id});
+      navigation.navigate("Tracking", {deliveryId: response.id, deliveryData: deliveryRequest});
     } catch (error) {
       Alert.alert(
         "Réquête non crée",

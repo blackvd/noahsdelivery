@@ -1,5 +1,5 @@
 // src/screens/ProfileScreen.js
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,10 @@ const ProfileScreen = ({ navigation }) => {
     paymentMethods: 2,
     memberSince: 'January 2024',
   };
+
+  useEffect(() => {
+
+  }, [])
 
   const handleLogout = () => {
     Alert.alert(

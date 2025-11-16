@@ -47,7 +47,7 @@ function RatingScreen({ navigation, route }) {
 
     console.log("Submit Rating:", {
       orderId,
-      driverId: driver.name,
+      driverId: driver.fullname,
       rating,
       tags: selectedTags,
       comment,
@@ -96,9 +96,9 @@ function RatingScreen({ navigation, route }) {
         >
           {/* Driver Card */}
           <View style={styles.driverCard}>
-            <Image source={{ uri: driver.photo }} style={styles.driverPhoto} />
-            <Text style={styles.driverName}>{driver.name}</Text>
-            <Text style={styles.driverVehicle}>{driver.vehicle}</Text>
+            <Image source={{ uri: `https://avatar.iran.liara.run/username?username=${driver.fullname}` }} style={styles.driverPhoto} />
+            <Text style={styles.driverName}>{driver.fullname}</Text>
+            {/* <Text style={styles.driverVehicle}>{driver.vehicle}</Text> */}
             <View style={styles.orderInfo}>
               <Text style={styles.orderIdText}>Commande: {orderId}</Text>
             </View>
