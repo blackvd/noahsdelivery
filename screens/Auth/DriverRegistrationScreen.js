@@ -20,16 +20,21 @@ import { AuthContext } from "../../store/context/auth-context";
 
 const DriverRegistrationScreen = ({ navigation, route }) => {
   const authCtx = useContext(AuthContext);
-  const { phone } = route.params || {};
+  const { identifier } = route.params || {};
 
   const [formData, setFormData] = useState({
     lastName: "",
     firstName: "",
     idCardFront: null,
+    idCardFrontPreview: null,
     idCardBack: null,
+    idCardBackPreview: null,
     licenseFront: null,
+    licenseFrontPreview: null,
     licenseBack: null,
+    licenseBackPreview: null,
     profilePhoto: null,
+    profilePhotoPreview: null,
   });
 
   const [loading, setLoading] = useState(false);
@@ -57,10 +62,25 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
         allowsEditing: true,
         aspect: field === "profilePhoto" ? [1, 1] : [16, 10],
         quality: 0.8,
+        base64: true
       });
 
       if (!result.canceled) {
-        setFormData({ ...formData, [field]: result.assets[0].uri });
+        const imageUri = result.assets[0].uri;
+      
+      // Déterminer le type MIME
+      const mimeType = result.assets[0].type === 'image' ? 'image/jpeg' : 'image/jpeg';
+      
+      // Créer le format Data URI avec Base64
+      const base64Image = result.assets[0].base64 
+        ? `data:${mimeType};base64,${result.assets[0].base64}`
+        : imageUri;
+
+      setFormData({ 
+        ...formData, 
+        [field]: base64Image, // Sauvegarde le Base64
+        [`${field}Preview`]: imageUri // Sauvegarde l'URI pour la preview
+      });
       }
     } catch (error) {
       Alert.alert("Erreur", "Impossible de charger l'image");
@@ -86,7 +106,49 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
       });
 
       if (!result.canceled) {
-        setFormData({ ...formData, [field]: result.assets[0].uri });
+        const imageUri = result.assets[0].uri;
+
+        // Sauvegarder l'URI pour la preview immédiate
+        setFormData({
+          ...formData,
+          [`${field}Preview`]: imageUri,
+        });
+
+        // Étape 2 : Compresser et convertir en Base64 en arrière-plan
+        try {
+          // Afficher un loader (optionnel)
+          setProcessingPhoto(field);
+
+          const manipulatedImage = await ImagePicker.manipulateAsync(
+            imageUri,
+            [{ resize: { width: field === "profilePhoto" ? 800 : 1024 } }],
+            {
+              compress: 0.7, // 70% qualité
+              format: ImagePicker.SaveFormat.JPEG,
+              base64: true, // ⚡ Génère le Base64
+            }
+          );
+
+          if (manipulatedImage.base64) {
+            const base64Image = `data:image/jpeg;base64,${manipulatedImage.base64}`;
+
+            console.log(`✅ Photo ${field} convertie:`, {
+              size: `${(base64Image.length / 1024).toFixed(2)} KB`,
+              dimensions: `${manipulatedImage.width}x${manipulatedImage.height}`,
+            });
+
+            // Sauvegarder le Base64
+            setFormData((prev) => ({
+              ...prev,
+              [field]: base64Image,
+            }));
+          }
+        } catch (conversionError) {
+          console.error("Erreur conversion Base64:", conversionError);
+          Alert.alert("Erreur", "Impossible de traiter l'image");
+        } finally {
+          setProcessingPhoto(null);
+        }
       }
     } catch (error) {
       Alert.alert("Erreur", "Impossible de prendre la photo");
@@ -152,10 +214,10 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
       );
       return false;
     }
-    if (!formData.profilePhoto) {
+    /* if (!formData.profilePhoto) {
       Alert.alert("Erreur", "Veuillez ajouter votre photo de profil");
       return false;
-    }
+    } */
     return true;
   };
 
@@ -165,6 +227,18 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
     //   routes: [{ name: "DriverHome" }], // ou votre écran principal
     // });
     if (!validateForm()) return;
+
+    const data = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      idCardFront: formData.idCardFrontPreview,
+      idCardBack: formData.idCardBackPreview,
+      driverLicenseCardFront: formData.licenseFrontPreview,
+      driverLicenseCardBack: formData.licenseBackPreview,
+      identifier
+    }
+
+    console.log(data);
 
     setLoading(true);
 
@@ -178,7 +252,7 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
       //   ...formData,
       // });
 
-      const response = await registerCourier(formData)
+      const response = await registerCourier(data)
       authCtx.authenticate(response, 'LIVREUR');
 
       // Alert.alert(
@@ -194,11 +268,11 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
     } catch (error) {
       Alert.alert('Erreur', 'Une erreur est survenue lors de l\'inscription');
       setLoading(false);
-    }
+    } 
   };
 
   const renderImageUpload = (field, label, icon) => {
-    const image = formData[field];
+    const image = formData[`${field}Preview`];
     const isProfile = field === "profilePhoto";
 
     return (
@@ -345,7 +419,7 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
         </View>
 
         {/* Photo de profil */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="camera-outline" size={20} color="#ef4444" />
             <Text style={styles.sectionTitle}>Photo de profil *</Text>
@@ -355,7 +429,7 @@ const DriverRegistrationScreen = ({ navigation, route }) => {
           </Text>
 
           {renderImageUpload("profilePhoto", "Votre photo", "camera-outline")}
-        </View>
+        </View> */}
 
         {/* Note de sécurité */}
         <View style={styles.securityNote}>

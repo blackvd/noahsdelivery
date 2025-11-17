@@ -10,7 +10,7 @@ export async function requestOtp(identifier, loginMethod, role) {
     role: role,
   };
 
-  console.log('get otp');
+  console.log(data);
 
   const response = await axios.post(`${BASE_URL}/otp/request`, data);
 
@@ -30,14 +30,7 @@ export async function verifyOtp(identifier, loginMethod, code) {
 }
 
 export async function registerCourier(courierData) {
-  const response = await axios.post(`${BASE_URL}/register/courier`, {
-    firstName: courierData.firstName,
-    lastName: courierData.lastName,
-    idCardFront: courierData.idCardFront,
-    idCardBack: courierData.idCardBack,
-    driverLicenseCardFront: courierData.licenseFront,
-    driverLicenseCardBack: courierData.licenseBack,
-  });
+  const response = await axios.post(`${BASE_URL}/register/courier`, courierData);
 
   return response.data.accessToken
 }
