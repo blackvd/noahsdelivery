@@ -12,10 +12,10 @@ import RatingScreen from "../screens/app/customer/RatingScreen";
 import DeliveryHistoryDetailsScreen from "../screens/app/customer/DeliveryHistoryDetailsScreen";
 import DriverHomeScreen from "../screens/app/driver/DriverHomeScreen";
 import DeliveryInProgressScreen from "../screens/app/driver/DeliveryInProgressScreen";
+import AuthScreen from "../screens/auth/AuthScreen";
+import OTPScreen from "../screens/auth/OTPScreen";
+import DriverRegistrationScreen from "../screens/auth/DriverRegistrationScreen";
 import { AuthContext } from "../store/context/auth-context";
-import AuthScreen from "../screens/Auth/AuthScreen";
-import OTPScreen from "../screens/Auth/OTPScreen";
-import DriverRegistrationScreen from "../screens/Auth/DriverRegistrationScreen";
 
 const Stack = createStackNavigator();
 

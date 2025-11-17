@@ -53,7 +53,7 @@ const ProfileScreen = ({ navigation }) => {
         useNativeDriver: true,
       }).start();
     } catch (error) {
-      console.error("Erreur chargement historique:", error);
+      console.error("Erreur chargement du profile:", error);
       Alert.alert(
         'Erreur',
         'Impossible de charger votre profil. Veuillez réessayer.',

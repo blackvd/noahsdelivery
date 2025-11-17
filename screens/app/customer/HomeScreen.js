@@ -30,6 +30,7 @@ function HomeScreen({ navigation }) {
   const [selectedMode, setSelectedMode] = useState("MOTO");
   const [pickupAddress, setPickupAddress] = useState({
     name: "",
+    exactName: "",
     addressText: "",
     latitude: null,
     longitude: null,
@@ -37,6 +38,7 @@ function HomeScreen({ navigation }) {
   });
   const [dropoffAddress, setDropoffAddress] = useState({
     name: "",
+    exactName: "",
     addressText: "",
     latitude: null,
     longitude: null,
@@ -353,6 +355,7 @@ function HomeScreen({ navigation }) {
         return {
           id: "current-location",
           name: "Ma position actuelle",
+          exactName: extractLocationName(data),
           addressText: data.display_name,
           subtitle: formatAddress(data.address),
           latitude: coords.latitude,
@@ -450,6 +453,7 @@ function HomeScreen({ navigation }) {
         const suggestions = data.map((place, index) => ({
           id: `place-${index}`,
           name: extractLocationName(place),
+          exactName: extractLocationName(place),
           addressText: place.display_name,
           subtitle: formatAddress(place.address),
           latitude: parseFloat(place.lat),
@@ -520,6 +524,7 @@ function HomeScreen({ navigation }) {
   const handleSelectLocation = (location) => {
     const locationData = {
       name: location.name,
+      exactName: location.exactName,
       addressText: location.addressText,
       latitude: location.latitude,
       longitude: location.longitude,
