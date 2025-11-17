@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE_URL = "http://172.20.10.3:3000/deliveries";
+//const BASE_URL = "http://172.20.10.3:3000/auth";
+const BASE_URL = "http://192.168.0.100:3000/auth";
 
 export async function computePrice(distanceData, authToken) {
   const response = await axios.post(

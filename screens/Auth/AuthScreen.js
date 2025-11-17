@@ -20,7 +20,7 @@ const AuthScreen = ({ navigation }) => {
   const [userType, setUserType] = useState("CLIENT"); // 'client' ou 'livreur'
   const [loginMethod, setLoginMethod] = useState("email"); // 'email' ou 'phone'
   const [identifier, setIdentifier] = useState("");
-  const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -32,26 +32,31 @@ const AuthScreen = ({ navigation }) => {
     });
     // Logique d'authentification
 
-    if(!identifier) {
-      Alert.alert('Champs requis', 'Prière fournir un numéro de téléphone ou une adresse mail')
+    if (!identifier) {
+      Alert.alert(
+        "Champs requis",
+        "Prière fournir un numéro de téléphone ou une adresse mail"
+      );
     }
 
-    setIsAuthenticating(true)
+    setIsAuthenticating(true);
 
-    try{
-      const response = await requestOtp(identifier, loginMethod, userType)
-    }catch(error){
-      Alert.alert('Problème de connexion', 'Une erreur est survenu prière réessayer')
+    try {
+      const response = await requestOtp(identifier, loginMethod, userType);
+      // Navigation vers l'écran OTP pour première connexion
+      navigation.navigate("OTP", {
+        identifier,
+        userType,
+        loginMethod,
+      });
+    } catch (error) {
+      Alert.alert(
+        "Problème de connexion",
+        "Une erreur est survenu prière réessayer"
+      );
     }
 
-    setIsAuthenticating(false)
-
-    // Navigation vers l'écran OTP pour première connexion
-    navigation.navigate("OTP", {
-      identifier,
-      userType,
-      loginMethod,
-    });
+    setIsAuthenticating(false);
   };
 
   const handleGoogleLogin = () => {
@@ -288,18 +293,22 @@ const AuthScreen = ({ navigation }) => {
 
         <View style={styles.bottomContainer}>
           <TouchableOpacity
-            style={[styles.loginButton, isAuthenticating && styles.loginButtonDisabled]}
+            style={[
+              styles.loginButton,
+              isAuthenticating && styles.loginButtonDisabled,
+            ]}
             onPress={handleLogin}
             activeOpacity={0.8}
             disabled={isAuthenticating}
           >
             {isAuthenticating ? (
-            <ThreeDotsLoader color="#fff" size={10} />
-          ) : (
-            <>
-              <Text style={styles.loginButtonText}>Se connecter</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
-            </>)}
+              <ThreeDotsLoader color="#fff" size={10} />
+            ) : (
+              <>
+                <Text style={styles.loginButtonText}>Se connecter</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -438,9 +447,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   loginButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     backgroundColor: "#ef4444",
     paddingVertical: 18,
@@ -514,23 +523,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   loadingOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 1000,
   },
   loadingContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 20,
     paddingVertical: 32,
     paddingHorizontal: 48,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -538,8 +547,8 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
     marginTop: 20,
   },
 });
