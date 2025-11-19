@@ -19,7 +19,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../../store/context/auth-context";
 import { getCourierData } from "../../../utils/courier";
 import ThreeDotsLoader from "../../../components/ThreeDotsLoader";
-import { getPendingDeliveries } from "../../../utils/delivery";
+import { claimDelivery, getPendingDeliveries } from "../../../utils/delivery";
 
 const { width } = Dimensions.get("window");
 
@@ -147,14 +147,22 @@ const DriverHomeScreen = ({ navigation }) => {
   const handleAccept = (request) => {
     Alert.alert(
       "Accepter la course",
-      `Accepter la livraison de ${request.price} ?`,
+      `Accepter la livraison de ${request.estimatedPrice} FCFA ?`,
       [
         { text: "Annuler", style: "cancel" },
         {
           text: "Accepter",
-          onPress: () => {
+          onPress: async () => {
             console.log("Accepted request:", request);
-            navigation.navigate("DeliveryInProgress", { delivery: request });
+            try {
+              const response = await claimDelivery(request.id, authCtx.token)
+
+              const delivery = {...request, status: "ASSIGNED"}
+              //console.log(delivery);
+              navigation.navigate("DeliveryInProgress", { delivery });
+            }catch(error) {
+              console.log("Une erreur s'est produite");
+            }
           },
         },
       ]

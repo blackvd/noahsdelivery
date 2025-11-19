@@ -364,11 +364,7 @@ const TrackingScreen = ({ navigation, route }) => {
           {/* Route Line */}
           {currentStage > 0 && (
             <Polyline
-              coordinates={
-                currentStage < 3
-                  ? [driverPosition, pickupCoords]
-                  : [pickupCoords, driverPosition, dropoffCoords]
-              }
+              coordinates={[pickupCoords, dropoffCoords]}
               strokeColor={currentStageData.bannerColor}
               strokeWidth={3}
               lineDashPattern={[1]}

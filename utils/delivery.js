@@ -70,6 +70,8 @@ export async function getDeliveries(authToken) {
     headers: { Authorization: `Bearer ${authToken}` },
   });
 
+  console.log(response.data);
+
   return response.data;
 }
 
@@ -82,4 +84,20 @@ export async function getPendingDeliveries(authToken) {
   //console.log(response.data);
 
   return response.data;
+}
+
+export async function claimDelivery(id, authToken) {
+  const response = await axios.patch(`${BASE_URL}/${id}/assign`, {}, {headers: {'Authorization': `Bearer ${authToken}`}})
+
+  return response.data
+}
+
+export async function changeDeliveryStatus(id, status, comment, authToken) {
+  console.log(status);
+  const response = await axios.patch(`${BASE_URL}/${id}/status`, {
+    status: status,
+    cancellationReason: comment
+  }, {headers: {'Authorization': `Bearer ${authToken}`}})
+
+  return response.data
 }
