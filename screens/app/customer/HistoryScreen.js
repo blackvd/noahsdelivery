@@ -110,7 +110,7 @@ function HistoryScreen ({navigation}) {
   // Rafraîchir
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadHistory();
+    await loadingHistory();
     setRefreshing(false);
   }
 

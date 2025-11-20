@@ -11,3 +11,10 @@ export async function getCourierData(authToken) {
 
   return response.data
 }
+
+export async function getDailyPerformance(authToken){
+  
+  const response = await axios.get(`${BASE_URL}/daily-performance`, {headers: {'Authorization': `Bearer ${authToken}`}})
+
+  return response.data
+}

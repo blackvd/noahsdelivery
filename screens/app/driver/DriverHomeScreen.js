@@ -1,5 +1,5 @@
 // src/screens/DriverHomeScreen.js
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { use, useContext, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -12,14 +12,17 @@ import {
   Modal,
   Animated,
   Dimensions,
+  FlatList,
+  RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../../store/context/auth-context";
-import { getCourierData } from "../../../utils/courier";
+import { getCourierData, getDailyPerformance } from "../../../utils/courier";
 import ThreeDotsLoader from "../../../components/ThreeDotsLoader";
 import { claimDelivery, getPendingDeliveries } from "../../../utils/delivery";
+import EmptyState from "../../../components/EmptyState";
 
 const { width } = Dimensions.get("window");
 
@@ -29,15 +32,25 @@ const DriverHomeScreen = ({ navigation }) => {
   const [isOnline, setIsOnline] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [courierData, setCourierData] = useState(null);
-  const [deliveries, setDeliveries] = useState([])
+  const [deliveries, setDeliveries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const [refreshing, setRefreshing] = useState(false);
+  const [courierStats, setCourierStats] = useState({
+    deliveryCount: 0,
+    dailyRatingAvg: 0
+  });
+
+  // ⚡ Stocker les IDs des livraisons rejetées/acceptées localement
+  const [rejectedIds, setRejectedIds] = useState(new Set());
+  const [acceptedIds, setAcceptedIds] = useState(new Set());
 
   useEffect(() => {
-    loadCourierData()
-    loadDeliveries()
+    loadCourierData();
+    loadDeliveries();
+    loadCourierStats();
   }, []);
 
   const loadCourierData = async () => {
@@ -61,14 +74,39 @@ const DriverHomeScreen = ({ navigation }) => {
   };
 
   const loadDeliveries = async () => {
-    try{
-      const response = await getPendingDeliveries(authCtx.token)
+    try {
+      const response = await getPendingDeliveries(authCtx.token);
+      
+      // ⚡ Filtrer les livraisons rejetées et acceptées
+      const filteredDeliveries = response.filter(
+        delivery => !rejectedIds.has(delivery.id) && !acceptedIds.has(delivery.id)
+      );
 
-      setDeliveries(response)
-    }catch (error) {
+      setDeliveries(filteredDeliveries);
+    } catch (error) {
       console.error("Erreur chargement des livraisons:", error);
     }
-  }
+  };
+
+  const loadCourierStats = async () => {
+    try {
+      const response = await getDailyPerformance(authCtx.token);
+
+      setCourierStats({
+        dailyRatingAvg: response.dailyRatingAvg,
+        deliveryCount: response.deliveryCount
+      });
+      console.log(response);
+      // Animation d'apparition
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start();
+    } catch (error) {
+      console.error("Erreur lors de l'obtention des données");
+    }
+  };
 
   // Données du livreur
   const driverData = {
@@ -82,21 +120,21 @@ const DriverHomeScreen = ({ navigation }) => {
     todayHours: "6.5h",
     todayRating: 4.8,
   };
-  
+
   const packageSize = [
     {
-      id: 'SMALL',
-      name: 'Petit'
+      id: "SMALL",
+      name: "Petit",
     },
     {
-      id: 'MEDIUM',
-      name: 'Moyen'
+      id: "MEDIUM",
+      name: "Moyen",
     },
     {
-      id: 'LARGE',
-      name: 'Large'
+      id: "LARGE",
+      name: "Large",
     },
-  ]
+  ];
 
   // Animation du menu
   useEffect(() => {
@@ -154,13 +192,18 @@ const DriverHomeScreen = ({ navigation }) => {
           text: "Accepter",
           onPress: async () => {
             console.log("Accepted request:", request);
+            setDeliveries(prev => prev.filter(d => d.id !== request.id));
+            // 2. Ajouter à la liste des acceptations
+            const newAcceptedIds = new Set(acceptedIds);
+            newAcceptedIds.add(request.id);
+            setAcceptedIds(newAcceptedIds);
             try {
-              const response = await claimDelivery(request.id, authCtx.token)
+              const response = await claimDelivery(request.id, authCtx.token);
 
-              const delivery = {...request, status: "ASSIGNED"}
+              const delivery = { ...request, status: "ASSIGNED" };
               //console.log(delivery);
               navigation.navigate("DeliveryInProgress", { delivery });
-            }catch(error) {
+            } catch (error) {
               console.log("Une erreur s'est produite");
             }
           },
@@ -168,9 +211,30 @@ const DriverHomeScreen = ({ navigation }) => {
       ]
     );
   };
+  
+  // ⚡ Sauvegarder les IDs rejetés dans AsyncStorage
+  const saveRejectedIds = async (ids) => {
+    try {
+      await AsyncStorage.setItem('rejectedDeliveryIds', JSON.stringify([...ids]));
+    } catch (error) {
+      console.error('Erreur sauvegarde IDs rejetés:', error);
+    }
+  };
 
   const handleDecline = (request) => {
-    console.log("Declined request:", request);
+    setDeliveries(prev => prev.filter(d => d.id !== request.id));
+
+    // 2. Ajouter à la liste des rejets
+    const newRejectedIds = new Set(rejectedIds);
+    newRejectedIds.add(request.id);
+    setRejectedIds(newRejectedIds);
+  };
+
+  // Rafraîchir
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadDeliveries();
+    setRefreshing(false);
   };
 
   const getSizeBadgeColor = (size) => {
@@ -255,7 +319,9 @@ const DriverHomeScreen = ({ navigation }) => {
         </View>
         <ThreeDotsLoader color="#ef4444" size={12} />
         <Text style={styles.loaderTitle}>Chargement du profil</Text>
-        <Text style={styles.loaderSubtitle}>Récupération de vos informations...</Text>
+        <Text style={styles.loaderSubtitle}>
+          Récupération de vos informations...
+        </Text>
       </View>
     </View>
   );
@@ -288,7 +354,13 @@ const DriverHomeScreen = ({ navigation }) => {
               activeOpacity={0.8}
             >
               <Image
-                source={{ uri: `https://avatar.iran.liara.run/username?username=${courierData.courierProfile.lastName + " " + courierData.courierProfile.firstName}` }}
+                source={{
+                  uri: `https://avatar.iran.liara.run/username?username=${
+                    courierData.courierProfile.lastName +
+                    " " +
+                    courierData.courierProfile.firstName
+                  }`,
+                }}
                 style={styles.profileImage}
               />
               <View style={styles.onlineIndicator} />
@@ -301,6 +373,17 @@ const DriverHomeScreen = ({ navigation }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#ef4444" // Couleur du spinner iOS
+            colors={['#ef4444', '#ef444483']} // Couleurs du spinner Android
+            progressBackgroundColor="#fff"
+            title="Actualisation..." // Texte iOS
+            titleColor="#6b7280"
+          />
+        }
       >
         {/* Toggle Online/Offline */}
         <View style={styles.card}>
@@ -329,7 +412,9 @@ const DriverHomeScreen = ({ navigation }) => {
           <View style={styles.performanceRow}>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={24} color="#fbbf24" />
-              <Text style={styles.ratingText}>{courierData.courierProfile.averageRating}</Text>
+              <Text style={styles.ratingText}>
+                {courierData.courierProfile.averageRating}
+              </Text>
             </View>
             <Text style={styles.deliveriesText}>
               {courierData.courierProfile.completedDeliveriesCount} livraisons
@@ -361,7 +446,7 @@ const DriverHomeScreen = ({ navigation }) => {
             </View>
             <Text style={styles.statLabel}>Livraisons</Text>
             <Text style={styles.statValue}>
-              {driverData.todayTrips} courses
+              {courierStats.deliveryCount} courses
             </Text>
           </View>
 
@@ -371,7 +456,7 @@ const DriverHomeScreen = ({ navigation }) => {
               <Ionicons name="star-outline" size={28} color="#f59e0b" />
             </View>
             <Text style={styles.statLabel}>Note</Text>
-            <Text style={styles.statValue}>{driverData.todayRating} ⭐</Text>
+            <Text style={styles.statValue}>{courierStats.dailyRatingAvg} ⭐</Text>
           </View>
 
           {/* Hours */}
@@ -407,23 +492,32 @@ const DriverHomeScreen = ({ navigation }) => {
                     <Text style={styles.requestDistance}>
                       {request.distanceKm} km
                     </Text>
-                    <Text style={styles.requestPrice}>{request.price}</Text>
+                    <Text style={styles.requestPrice}>
+                      {request.estimatedPrice} F
+                    </Text>
                   </View>
                   <View style={styles.requestBottomRow}>
-                    {/* <Text style={styles.requestTime}>{request.time}</Text> */}
                     <View
                       style={[
                         styles.sizeBadge,
-                        { backgroundColor: getSizeBadgeColor(request.packageSize) },
+                        {
+                          backgroundColor: getSizeBadgeColor(
+                            request.packageSize
+                          ),
+                        },
                       ]}
                     >
                       <Text
                         style={[
                           styles.sizeBadgeText,
-                          { color: getSizeTextColor(request.size) },
+                          { color: getSizeTextColor(request.packageSize) },
                         ]}
                       >
-                        {packageSize.find(size => size.id === request.packageSize).name}
+                        {
+                          packageSize.find(
+                            (size) => size.id === request.packageSize
+                          ).name
+                        }
                       </Text>
                     </View>
                   </View>
@@ -435,9 +529,13 @@ const DriverHomeScreen = ({ navigation }) => {
                   <View style={styles.locationDot} />
                   <View style={styles.locationTextContainer}>
                     <Text style={styles.locationLabel}>Pickup</Text>
-                    <Text style={styles.locationAddress}>{request.addressDeliveries.find(
-                    (addr) => addr.type === "PICKUP"
-                  ).name}</Text>
+                    <Text style={styles.locationAddress}>
+                      {
+                        request.addressDeliveries.find(
+                          (addr) => addr.type === "PICKUP"
+                        ).name
+                      }
+                    </Text>
                   </View>
                 </View>
 
@@ -448,9 +546,11 @@ const DriverHomeScreen = ({ navigation }) => {
                   <View style={styles.locationTextContainer}>
                     <Text style={styles.locationLabel}>Drop-off</Text>
                     <Text style={styles.locationAddress}>
-                      {request.addressDeliveries.find(
-                    (addr) => addr.type === "DROPOFF"
-                  ).name}
+                      {
+                        request.addressDeliveries.find(
+                          (addr) => addr.type === "DROPOFF"
+                        ).name
+                      }
                     </Text>
                   </View>
                 </View>
@@ -792,6 +892,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#dc2626",
   },
+  contentContainer: {
+    marginTop: 100,
+  },
   requestCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -1074,40 +1177,40 @@ const styles = StyleSheet.create({
   // Loader
   loaderContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
   },
   loaderContent: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 32,
   },
   loaderIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fef2f2',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#fef2f2",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 32,
     borderWidth: 2,
-    borderColor: '#fee2e2',
+    borderColor: "#fee2e2",
   },
   loaderTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
     marginBottom: 8,
     marginTop: 24,
   },
   loaderSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   dotsLoaderContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     height: 40,
   },

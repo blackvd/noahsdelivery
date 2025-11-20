@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   Alert,
   Image,
@@ -14,8 +14,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { rateDelivery } from "../../../utils/delivery";
+import { AuthContext } from "../../../store/context/auth-context";
 
 function RatingScreen({ navigation, route }) {
+  const authCtx = useContext(AuthContext);
   const { orderId, driver, deliveryData } = route.params;
 
   const [rating, setRating] = useState(0);
@@ -39,35 +42,54 @@ function RatingScreen({ navigation, route }) {
     }
   };
 
-  const handleSubmitRating = () => {
+  const handleSubmitRating = async () => {
     if (rating === 0) {
-      Alert.alert("Évaluation requise", "Veuillez sélectionner une note par étoiles");
+      Alert.alert(
+        "Évaluation requise",
+        "Veuillez sélectionner une note par étoiles"
+      );
       return;
     }
 
     console.log("Submit Rating:", {
       orderId,
-      driverId: driver.fullname,
+      driverId: driver.id,
       rating,
       tags: selectedTags,
       comment,
     });
 
+    try {
+      const response = await rateDelivery(
+        orderId,
+        comment + " tags : " + selectedTags.join(","),
+        rating,
+        driver.id,
+        authCtx.token
+      );
+    } catch (error) {
+      console.error("Une erreur s'est produite lors de la notation : ", error);
+    }
+
     // API call here
     // ...
 
     // Success feedback
-    Alert.alert("Merci !", "Vos commentaires nous aident à améliorer notre service.", [
-      {
-        text: "Done",
-        onPress: () => {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "CustomerApp" }], // ou votre écran principal
-          });
+    Alert.alert(
+      "Merci !",
+      "Vos commentaires nous aident à améliorer notre service.",
+      [
+        {
+          text: "Done",
+          onPress: () => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "CustomerApp" }], // ou votre écran principal
+            });
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
@@ -96,7 +118,12 @@ function RatingScreen({ navigation, route }) {
         >
           {/* Driver Card */}
           <View style={styles.driverCard}>
-            <Image source={{ uri: `https://avatar.iran.liara.run/username?username=${driver.fullname}` }} style={styles.driverPhoto} />
+            <Image
+              source={{
+                uri: `https://avatar.iran.liara.run/username?username=${driver.fullname}`,
+              }}
+              style={styles.driverPhoto}
+            />
             <Text style={styles.driverName}>{driver.fullname}</Text>
             {/* <Text style={styles.driverVehicle}>{driver.vehicle}</Text> */}
             <View style={styles.orderInfo}>
@@ -106,7 +133,9 @@ function RatingScreen({ navigation, route }) {
 
           {/* Star Rating */}
           <View style={styles.ratingSection}>
-            <Text style={styles.sectionTitle}>Comment s'est passée la livraison ?</Text>
+            <Text style={styles.sectionTitle}>
+              Comment s'est passée la livraison ?
+            </Text>
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity
@@ -138,7 +167,9 @@ function RatingScreen({ navigation, route }) {
           {/* Tags */}
           {rating > 0 && (
             <View style={styles.tagsSection}>
-              <Text style={styles.sectionTitle}>Qu'est-ce qui vous a plu ?</Text>
+              <Text style={styles.sectionTitle}>
+                Qu'est-ce qui vous a plu ?
+              </Text>
               <View style={styles.tagsContainer}>
                 {ratingTags.map((tag) => (
                   <TouchableOpacity

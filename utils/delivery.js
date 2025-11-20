@@ -87,17 +87,39 @@ export async function getPendingDeliveries(authToken) {
 }
 
 export async function claimDelivery(id, authToken) {
-  const response = await axios.patch(`${BASE_URL}/${id}/assign`, {}, {headers: {'Authorization': `Bearer ${authToken}`}})
+  const response = await axios.patch(
+    `${BASE_URL}/${id}/assign`,
+    {},
+    { headers: { Authorization: `Bearer ${authToken}` } }
+  );
 
-  return response.data
+  return response.data;
 }
 
 export async function changeDeliveryStatus(id, status, comment, authToken) {
-  console.log(status);
-  const response = await axios.patch(`${BASE_URL}/${id}/status`, {
-    status: status,
-    cancellationReason: comment
-  }, {headers: {'Authorization': `Bearer ${authToken}`}})
+  //console.log(status);
+  const response = await axios.patch(
+    `${BASE_URL}/${id}/status`,
+    {
+      status: status,
+      cancellationReason: comment,
+    },
+    { headers: { Authorization: `Bearer ${authToken}` } }
+  );
+
+  return response.data;
+}
+
+export async function rateDelivery(id, comment, rate, courierId, authToken) {
+  const response = await axios.post(
+    `${BASE_URL}/rate/${id}`,
+    {
+      comment,
+      rate,
+      courierId,
+    },
+    { headers: { Authorization: `Bearer ${authToken}` } }
+  );
 
   return response.data
 }

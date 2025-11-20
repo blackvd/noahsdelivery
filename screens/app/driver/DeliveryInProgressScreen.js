@@ -12,6 +12,7 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -112,7 +113,7 @@ const DeliveryInProgressScreen = ({ navigation, route }) => {
         (addr) => addr.type === "DROPOFF"
       ).longitude,
     }));
-  }, [delivery]);
+  }, []);
 
   // const getPickupCoords = () => {
   //   if(!delivery) return {}
@@ -182,8 +183,8 @@ const DeliveryInProgressScreen = ({ navigation, route }) => {
     }
   }, [showReturnModal]);
 
-  const handleCallCustomer = () => {
-    const phoneNumber = customerInfo.phone.replace(/\s/g, "");
+  const handleCallCustomer = (phoneNumber) => {
+    //const phoneNumber = customerInfo.phone.replace(/\s/g, "");
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
@@ -461,17 +462,17 @@ const DeliveryInProgressScreen = ({ navigation, route }) => {
                   <Ionicons name="person" size={24} color="#6b7280" />
                 </View>
                 <View style={styles.customerInfo}>
-                  <Text style={styles.customerName}>{customerInfo.name}</Text>
+                  <Text style={styles.customerName}>{delivery.client.fullName !== null ? delivery.client.fullName : "Guest"}</Text>
                   <View style={styles.customerRating}>
                     <Ionicons name="star" size={14} color="#fbbf24" />
                     <Text style={styles.customerRatingText}>
-                      {customerInfo.rating}
+                      {delivery.client.averageRating}
                     </Text>
                   </View>
                 </View>
                 <TouchableOpacity
                   style={styles.callButton}
-                  onPress={handleCallCustomer}
+                  onPress={() => handleCallCustomer(delivery.client.phone)}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="call" size={20} color="#fff" />
